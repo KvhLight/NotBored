@@ -25,7 +25,10 @@ export default async (req) => {
 
     if (isGemini) {
       // Para Gemini, añadimos la API key como un parámetro de la URL final en el servidor de Netlify
-      targetURL = `${baseURL}&key=${apiKey || ''}`;
+      const cleanBase = baseURL.replace(/\/+$/, '');
+      targetURL = cleanBase.endsWith('/chat/completions')
+        ? `${cleanBase}?key=${apiKey || ''}`
+        : `${cleanBase}/chat/completions?key=${apiKey || ''}`;
     } else {
       // Para DeepSeek u otros, construimos la ruta estándar e incluimos la cabecera de autenticación
       const cleanBase = baseURL.replace(/\/+$/, '');
