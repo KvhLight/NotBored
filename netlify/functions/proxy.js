@@ -26,9 +26,14 @@ export default async (req) => {
     if (isGemini) {
       const cleanBase = baseURL.replace(/\/+$/, '');
 
+      headers = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      };
+
       targetURL = cleanBase.endsWith('/chat/completions')
-        ? `${cleanBase}?key=${apiKey || ''}`
-        : `${cleanBase}/chat/completions?key=${apiKey || ''}`;
+        ? cleanBase
+        : `${cleanBase}/chat/completions`;
 
       console.log(targetURL);
     } else {
