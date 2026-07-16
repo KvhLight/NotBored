@@ -285,7 +285,7 @@ async function getOllamaModels() {
 
 async function sendMessage({ character, history, userMessage }) {
   const settings = getSettings();
-  const { baseURL, apiKey, meta } = getProviderConfig(settings);
+  const { baseURL, apiKey, meta, providerId } = getProviderConfig(settings);
 
   if (meta.requiresApiKey && !apiKey) {
     listeners.error.forEach(cb => cb(`Falta la API Key de ${meta.label}. Ve a Ajustes → IA y pégala.`));
@@ -295,27 +295,47 @@ async function sendMessage({ character, history, userMessage }) {
   const contextMessages = buildContextWindow(history, systemPrompt, settings.maxContextTokens);
   contextMessages.push({ role: 'user', content: userMessage });
 
-  const requestBody = {
-    model: settings.model || meta.defaultModel,
-    messages: contextMessages,
-    temperature: settings.temperature || 0.85,
-    max_tokens: settings.maxTokens || 1000,
-    stream: true,
-  };
+  const model = settings.model || meta.defaultModel;
+  let targetURL, targetHeaders, targetBody;
+
+  if (meta.format === 'gemini-native') {
+    // Gemini nativo: roles 'user'/'model' (no 'assistant'), el system prompt
+    // va aparte en systemInstruction, y la key va en la cabecera x-goog-api-key.
+    const contents = contextMessages
+      .filter(m => m.role !== 'system')
+      .map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] }));
+    targetURL = `${baseURL}/models/${model}:streamGenerateContent?alt=sse`;
+    targetHeaders = { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey };
+    targetBody = {
+      contents,
+      systemInstruction: { parts: [{ text: systemPrompt }] },
+      generationConfig: {
+        temperature: settings.temperature || 0.85,
+        maxOutputTokens: settings.maxTokens || 1000,
+      },
+    };
+  } else {
+    // Formato OpenAI (DeepSeek, Ollama, Mistral, Cerebras...)
+    targetURL = `${baseURL}/chat/completions`;
+    targetHeaders = { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` };
+    targetBody = {
+      model,
+      messages: contextMessages,
+      temperature: settings.temperature || 0.85,
+      max_tokens: settings.maxTokens || 1000,
+      stream: true,
+    };
+  }
 
   // Ollama vive en tu red local: se llama directo, el proxy en la nube no
   // podría alcanzarlo. Los demás proveedores pasan por /api/proxy para
   // evitar bloqueos de CORS (Gemini, por ejemplo, los aplica siempre).
   const fetchTarget = providerId === 'ollama'
-    ? [`${baseURL}/chat/completions`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-        body: JSON.stringify(requestBody),
-      }]
+    ? [targetURL, { method: 'POST', headers: targetHeaders, body: JSON.stringify(targetBody) }]
     : ['/api/proxy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ baseURL, apiKey, body: requestBody }),
+        body: JSON.stringify({ url: targetURL, headers: targetHeaders, body: targetBody }),
       }];
 
   try {
@@ -345,7 +365,9 @@ async function sendMessage({ character, history, userMessage }) {
         if (data === '[DONE]') continue;
         try {
           const json = JSON.parse(data);
-          const delta = json.choices?.[0]?.delta?.content || '';
+          const delta = meta.format === 'gemini-native'
+            ? (json.candidates?.[0]?.content?.parts?.[0]?.text || '')
+            : (json.choices?.[0]?.delta?.content || '');
           if (delta) listeners.chunk.forEach(cb => cb(delta));
         } catch {
           // fragmento parcial, se completará en el siguiente chunk
@@ -398,32 +420,46 @@ You MUST respond using this exact JSON structure:
   "secretMotivation": "A hidden core motivation or dark secret the player could discover over time"
 }`;
 
-  const forgeBody = {
-    model: settings.model || meta.defaultModel,
-    messages: [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: userPrompt },
-    ],
-    temperature: 0.95,
-    max_tokens: 800,
-  };
+  const model = settings.model || meta.defaultModel;
+  let forgeURL, forgeHeaders, forgeReqBody;
+
+  if (meta.format === 'gemini-native') {
+    forgeURL = `${baseURL}/models/${model}:generateContent`;
+    forgeHeaders = { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey };
+    forgeReqBody = {
+      contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+      systemInstruction: { parts: [{ text: systemPrompt }] },
+      generationConfig: { temperature: 0.95, maxOutputTokens: 800 },
+    };
+  } else {
+    forgeURL = `${baseURL}/chat/completions`;
+    forgeHeaders = { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` };
+    forgeReqBody = {
+      model,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+      temperature: 0.95,
+      max_tokens: 800,
+    };
+  }
+
   const forgeTarget = providerId === 'ollama'
-    ? [`${baseURL}/chat/completions`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-        body: JSON.stringify(forgeBody),
-      }]
+    ? [forgeURL, { method: 'POST', headers: forgeHeaders, body: JSON.stringify(forgeReqBody) }]
     : ['/api/proxy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ baseURL, apiKey, body: forgeBody }),
+        body: JSON.stringify({ url: forgeURL, headers: forgeHeaders, body: forgeReqBody }),
       }];
 
   try {
     const resp = await fetch(...forgeTarget);
     if (!resp.ok) throw new Error(`Error al forjar personaje (código ${resp.status}).`);
     const data = await resp.json();
-    const raw = data.choices?.[0]?.message?.content || '';
+    const raw = meta.format === 'gemini-native'
+      ? (data.candidates?.[0]?.content?.parts?.[0]?.text || '')
+      : (data.choices?.[0]?.message?.content || '');
     const clean = raw.replace(/```json/g, '').replace(/```/g, '').trim();
     if (!clean) throw new Error('La IA devolvió una respuesta vacía.');
     const parsed = JSON.parse(clean);

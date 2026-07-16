@@ -32,10 +32,13 @@ export const PROVIDERS = {
 
   gemini: {
     label: 'Google Gemini',
-    // Endpoint compatible con OpenAI que expone Google (nota la barra final, es necesaria)
-    baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/',
+    // Google rompió su ruta "compatible con OpenAI" para las keys nuevas
+    // (formato AQ...) — devuelven 401 ahí. La API nativa sí funciona con
+    // cualquier formato de key, así que hablamos con ella directamente.
+    format: 'gemini-native',
+    baseURL: 'https://generativelanguage.googleapis.com/v1beta',
     requiresApiKey: true,
-    keyPlaceholder: 'AIza...',
+    keyPlaceholder: 'AQ... o AIza...',
     // La serie 2.5 ya no está disponible para keys nuevas — usa la serie 3.x
     models: ['gemini-3.5-flash', 'gemini-3.1-flash-lite'],
     defaultModel: 'gemini-3.1-flash-lite',

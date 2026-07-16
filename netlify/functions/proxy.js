@@ -1,15 +1,20 @@
 // ============================================================================
 // netlify/functions/proxy.js
 //
-// Proxy server-side hacia el proveedor de IA elegido. Existe por un motivo
-// muy concreto: algunas APIs (Gemini es el caso confirmado) NO permiten que
-// un navegador las llame directamente (bloquean CORS). Al pasar la petición
-// por aquí, la llamada real sale desde el servidor de Netlify, no desde el
-// navegador — así que el bloqueo de CORS no aplica nunca.
+// Proxy server-side genérico. Existe por un motivo muy concreto: algunas
+// APIs (Gemini es el caso confirmado) NO permiten que un navegador las
+// llame directamente (bloquean CORS). Al pasar la petición por aquí, la
+// llamada real sale desde el servidor de Netlify, no desde el navegador —
+// así que el bloqueo de CORS no aplica nunca.
+//
+// Es deliberadamente "tonto": el cliente (webAdapter.js) decide la URL
+// completa, las cabeceras y el cuerpo exactos según el formato de cada
+// proveedor (OpenAI-compatible, Gemini nativo, etc.) — este proxy solo
+// reenvía tal cual. Así, soportar un formato nuevo no requiere tocar esto.
 //
 // Ollama NO pasa por aquí: como corre en tu red local (tu PC), este proxy
 // (que vive en la nube) no podría alcanzarlo. Ollama sigue llamándose
-// directo desde el navegador, como hasta ahora.
+// directo desde el navegador.
 // ============================================================================
 
 export default async (req) => {
@@ -18,26 +23,22 @@ export default async (req) => {
   }
 
   try {
-    const { baseURL, apiKey, body } = await req.json();
+    const { url, headers, body } = await req.json();
 
-    if (!baseURL || typeof baseURL !== 'string') {
-      return new Response(JSON.stringify({ error: 'Falta baseURL.' }), {
+    if (!url || typeof url !== 'string') {
+      return new Response(JSON.stringify({ error: 'Falta url.' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' },
       });
     }
 
-    const cleanBase = baseURL.replace(/\/+$/, ''); // sin barra final duplicada
-    const upstream = await fetch(`${cleanBase}/chat/completions`, {
+    const upstream = await fetch(url, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey || ''}`,
-      },
+      headers: headers || { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
 
-    // Reenviamos la respuesta tal cual llega (incluye el streaming SSE si body.stream === true)
+    // Reenviamos la respuesta tal cual llega (incluye el streaming SSE)
     return new Response(upstream.body, {
       status: upstream.status,
       headers: {
@@ -52,6 +53,4 @@ export default async (req) => {
   }
 };
 
-// Ruta limpia: la función queda accesible en /api/proxy en vez de
-// /.netlify/functions/proxy
 export const config = { path: '/api/proxy' };
