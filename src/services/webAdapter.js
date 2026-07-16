@@ -295,7 +295,7 @@ async function sendMessage({ character, history, userMessage }) {
   const contextMessages = buildContextWindow(history, systemPrompt, settings.maxContextTokens);
   contextMessages.push({ role: 'user', content: userMessage });
 
-  const model = settings.model || meta.defaultModel;
+  const model = (meta.models && !meta.models.includes(settings.model)) ? meta.defaultModel : (settings.model || meta.defaultModel);
   let targetURL, targetHeaders, targetBody;
 
   if (meta.format === 'gemini-native') {
@@ -424,7 +424,7 @@ You MUST respond using this exact JSON structure:
   "secretMotivation": "A hidden core motivation or dark secret the player could discover over time"
 }`;
 
-  const model = settings.model || meta.defaultModel;
+  const model = (meta.models && !meta.models.includes(settings.model)) ? meta.defaultModel : (settings.model || meta.defaultModel);
   let forgeURL, forgeHeaders, forgeReqBody;
 
   if (meta.format === 'gemini-native') {
