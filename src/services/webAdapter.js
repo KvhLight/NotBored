@@ -311,7 +311,7 @@ async function sendMessage({ character, history, userMessage }) {
   });
 
   requestBody = {
-    model: settings.model || meta.defaultModel,
+    model: "gemini-2.5-flash-lite",
     messages: contextMessages,
     temperature: settings.temperature || 0.85,
     max_tokens: settings.maxTokens || 1000,
