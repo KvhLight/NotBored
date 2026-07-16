@@ -29,6 +29,9 @@ export default async (req) => {
       targetURL = cleanBase.endsWith('/chat/completions')
         ? `${cleanBase}?key=${apiKey || ''}`
         : `${cleanBase}/chat/completions?key=${apiKey || ''}`;
+        console.log(targetURL);
+        const text = await upstream.text();
+        console.log(text);
     } else {
       // Para DeepSeek u otros, construimos la ruta estándar e incluimos la cabecera de autenticación
       const cleanBase = baseURL.replace(/\/+$/, '');
