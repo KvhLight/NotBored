@@ -295,27 +295,37 @@ async function sendMessage({ character, history, userMessage }) {
   const contextMessages = buildContextWindow(history, systemPrompt, settings.maxContextTokens);
   contextMessages.push({ role: 'user', content: userMessage });
 
+  const requestBody = {
+    model: settings.model || meta.defaultModel,
+    messages: contextMessages,
+    temperature: settings.temperature || 0.85,
+    max_tokens: settings.maxTokens || 1000,
+    stream: true,
+  };
+
+  // Ollama vive en tu red local: se llama directo, el proxy en la nube no
+  // podría alcanzarlo. Los demás proveedores pasan por /api/proxy para
+  // evitar bloqueos de CORS (Gemini, por ejemplo, los aplica siempre).
+  const fetchTarget = providerId === 'ollama'
+    ? [`${baseURL}/chat/completions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify(requestBody),
+      }]
+    : ['/api/proxy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ baseURL, apiKey, body: requestBody }),
+      }];
+
   try {
-    const resp = await fetch(`${baseURL}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: settings.model || 'deepseek-chat',
-        messages: contextMessages,
-        temperature: settings.temperature || 0.85,
-        max_tokens: settings.maxTokens || 1000,
-        stream: true,
-      }),
-    });
+    const resp = await fetch(...fetchTarget);
 
     if (!resp.ok) {
       if (resp.status === 401) throw new Error('API Key inválida o expirada.');
       if (resp.status === 429) throw new Error('Rate limit alcanzado. Espera un momento.');
-      if (resp.status === 503) throw new Error('El servicio de DeepSeek no está disponible.');
-      throw new Error(`Error de DeepSeek (código ${resp.status}).`);
+      if (resp.status === 503) throw new Error(`El servicio de ${meta.label} no está disponible.`);
+      throw new Error(`Error de ${meta.label} (código ${resp.status}).`);
     }
 
     const reader = resp.body.getReader();
@@ -347,10 +357,10 @@ async function sendMessage({ character, history, userMessage }) {
     return { success: true };
   } catch (err) {
     let msg = err.message;
-    if (msg === 'Failed to fetch') {
-      msg = settings.provider === 'ollama'
+    if (msg === 'Failed to fetch' || msg === 'Load failed') {
+      msg = providerId === 'ollama'
         ? 'No se pudo conectar con Ollama. ¿Está tu PC encendido, Ollama corriendo y estás en la misma WiFi?'
-        : 'Sin conexión a internet.';
+        : 'Sin conexión a internet, o el servicio no respondió.';
     }
     listeners.error.forEach(cb => cb(msg));
     return { success: false };
@@ -362,8 +372,7 @@ async function sendMessage({ character, history, userMessage }) {
    ========================================================================== */
 async function forgeGenerateCharacter(idea) {
   const settings = getSettings();
-  const { baseURL, apiKey, meta } = getProviderConfig(settings);
-
+  const { baseURL, apiKey, meta, providerId } = getProviderConfig(settings);
   if (meta.requiresApiKey && !apiKey) {
     return { success: false, error: `Falta la API Key de ${meta.label}. Configúrala en Ajustes.` };
   }
@@ -389,23 +398,29 @@ You MUST respond using this exact JSON structure:
   "secretMotivation": "A hidden core motivation or dark secret the player could discover over time"
 }`;
 
+  const forgeBody = {
+    model: settings.model || meta.defaultModel,
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt },
+    ],
+    temperature: 0.95,
+    max_tokens: 800,
+  };
+  const forgeTarget = providerId === 'ollama'
+    ? [`${baseURL}/chat/completions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify(forgeBody),
+      }]
+    : ['/api/proxy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ baseURL, apiKey, body: forgeBody }),
+      }];
+
   try {
-    const resp = await fetch(`${baseURL}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: settings.model || 'deepseek-chat',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt },
-        ],
-        temperature: 0.95,
-        max_tokens: 800,
-      }),
-    });
+    const resp = await fetch(...forgeTarget);
     if (!resp.ok) throw new Error(`Error al forjar personaje (código ${resp.status}).`);
     const data = await resp.json();
     const raw = data.choices?.[0]?.message?.content || '';
@@ -429,7 +444,7 @@ function selectFile() {
   return new Promise((resolve) => {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = 'image/png, image/jpeg, image/webp, image/gif';
+    input.accept = 'image/png, image/jpeg, image/webp, image/gif, image/heic, image/heif';
     input.onchange = () => {
       const file = input.files?.[0];
       if (!file) { resolve(null); return; }
@@ -440,21 +455,37 @@ function selectFile() {
     input.click();
   });
 }
-function fileToBase64(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
+
+/**
+ * Convierte el archivo a Base64, redimensionándolo antes.
+ * Las fotos del iPhone pueden pesar varios MB a resolución completa —
+ * sin este paso, convertirlas a Base64 es lentísimo y además podría llenar
+ * el almacenamiento del navegador (localStorage tiene muy poco espacio,
+ * unos 5-10MB en total para toda la app).
+ */
+async function resizeImageToDataURL(file, maxDim = 1024, quality = 0.85) {
+  const bitmap = await createImageBitmap(file);
+  let { width, height } = bitmap;
+  if (width > maxDim || height > maxDim) {
+    const scale = maxDim / Math.max(width, height);
+    width = Math.round(width * scale);
+    height = Math.round(height * scale);
+  }
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  canvas.getContext('2d').drawImage(bitmap, 0, 0, width, height);
+  bitmap.close?.();
+  return canvas.toDataURL('image/jpeg', quality);
 }
+
 async function toBase64() {
   if (!pendingFile) throw new Error('No hay imagen seleccionada.');
-  return fileToBase64(pendingFile);
+  return resizeImageToDataURL(pendingFile);
 }
 async function saveAvatar() {
-  // En web no existe disco local: el "guardado" es el mismo Base64
-  return toBase64();
+  // En web no existe disco local: el "guardado" es el mismo Base64 ya redimensionado
+  return resizeImageToDataURL(pendingFile);
 }
 async function deleteAvatar() {
   return true;
