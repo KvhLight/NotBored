@@ -1,0 +1,107 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+
+@tailwind	base;
+@tailwind	components;
+@tailwind	utilities;
+/*	==========================================================================
+  THEME	DINÁMICO	—	Variables	CSS	basadas	en	HSL
+  Cada	color	guarda	su	Hue	(tono),	Saturación	y	Luminosidad	por	separado.
+  Al	cambiar	--theme-hue-shift,	TODOS	los	colores	rotan	de	tono	en	bloque,
+  manteniendo	su	saturación/luminosidad	relativas	(su	"diferencia	de	color").
+==========================================================================	*/
+:root	{
+  /*	Desplazamiento	de	tono	respecto	al	theme	original	(violeta	=	0)	*/
+  --theme-hue-shift:	0;
+  /*	Colores	base,	definidos	en	HSL	con	el	hue	ORIGINAL	de	cada	uno.
+    262°	=	violeta	(accent),	189°	=	cian	(accent-2),	217°	=	azul	(msg-user)	*/
+    --app-bg-h:	248;			--app-bg-s:	33%;		--app-bg-l:	6%;
+    --card-bg-h:	240;		--card-bg-s:	24%;	--card-bg-l:	13%;
+    --accent-h:	262;			--accent-s:	83%;		--accent-l:	58%;
+    --accent2-h:	189;		--accent2-s:	94%;	--accent2-l:	43%;
+    --msguser-h:	217;		--msguser-s:	78%;	--msguser-l:	42%;
+    --msgai-h:	240;				--msgai-s:	20%;			--msgai-l:	15%;
+  /*	Color	final	=	hue	base	+	shift	global,	manteniendo	s/l	intactas	*/
+    --color-app-bg:	hsl(calc(var(--app-bg-h)	+	var(--theme-hue-shift))	var(--app-bg-s)	var(--app-bg-l));
+    --color-card-bg:	hsl(calc(var(--card-bg-h)	+	var(--theme-hue-shift))	var(--card-bg-s)	var(--card-bg-l));
+    --color-accent:	hsl(calc(var(--accent-h)	+	var(--theme-hue-shift))	var(--accent-s)	var(--accent-l));
+    --color-accent-2:	hsl(calc(var(--accent2-h)	+	var(--theme-hue-shift))	var(--accent2-s)	var(--accent2-l));
+    --color-msg-user:	hsl(calc(var(--msguser-h)	+	var(--theme-hue-shift))	var(--msguser-s)	var(--msguser-l));
+    --color-msg-ai:	hsl(calc(var(--msgai-h)	+	var(--theme-hue-shift))	var(--msgai-s)	var(--msgai-l));
+  /*	Fondo	de	pantalla	de	la	app	(imagen).	Vacío	=	sin	imagen,	solo	color.	*/
+    --app-wallpaper-image:	none;
+}
+/*	Capa	de	fondo	de	la	app	—	se	pinta	detrás	de	#root	cuando	hay	wallpaper	*/
+  .app-wallpaper-layer	{
+    position:	fixed;
+    inset:	0;
+    z-index:	-1;
+    background-color:	var(--color-app-bg);
+    background-image:	var(--app-wallpaper-image);
+    background-size:	cover;
+    background-position:	center;
+  }
+  /*	Fondo	de	pantalla	del	CHAT	—	se	aplica	como	overlay	dentro	de	ChatWindow	*/
+  .chat-wallpaper-layer	{
+    background-size:	cover;
+    background-position:	center;
+    position:	relative;
+  }
+  .chat-wallpaper-layer::before	{
+    content:	'';
+    position:	absolute;
+    inset:	0;
+    background:	inherit;
+    opacity:	0.35;	/*	la	imagen	no	debe	competir	con	la	legibilidad	de	los	mensajes	*/
+    z-index:	0;
+  }
+  .chat-wallpaper-layer	>	*	{
+    position:	relative;
+    z-index: 1;
+  }
+/* Reset para aspecto móvil en ventana desktop */
+html, 
+body, 
+#root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  background: var(--color-app-bg);
+  color: #E2E8F0;
+  font-family: 'Inter', sans-serif;
+}
+
+/* Scrollbar personalizada */
+::-webkit-scrollbar { 
+  width: 4px; 
+}
+
+::-webkit-scrollbar-track { 
+  background: var(--color-card-bg); 
+}
+
+::-webkit-scrollbar-thumb { 
+  background: var(--color-accent); border-radius: 2px; 
+}
+
+.thin-scrollbar {
+  scrollbar-width: thin;
+}
+
+.thin-scrollbar::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+.thin-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.thin-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0);
+  border-radius: 999px;
+}
+
+.thin-scrollbar:hover::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.25);
+}

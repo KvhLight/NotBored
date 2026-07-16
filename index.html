@@ -1,0 +1,45 @@
+<!-- index.html -->
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="
+        default-src 'self';
+        script-src 'self' 'unsafe-inline';
+        style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+        font-src https://fonts.gstatic.com;
+        connect-src
+          'self'
+          ws://localhost:5173
+          http://localhost:5173
+          http://127.0.0.1:11434
+          http://*:11434
+          https://api.deepseek.com
+          https://generativelanguage.googleapis.com
+          https://api.mistral.ai
+          https://api.cerebras.ai;
+        img-src 'self' data: file: blob:;
+      "
+    />
+    <title>DeepSeek Roleplay</title>
+    <link rel="icon" type="image/png" href="/icon.png" />
+
+    <!-- ==================== PWA / "Añadir a pantalla de inicio" ==================== -->
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#0b0713" />
+
+    <!-- iOS: oculta la barra de Safari y se comporta como app nativa -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Proyecto Yo" />
+    <link rel="apple-touch-icon" href="/Icon.png" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <!-- Vite inyecta aquí el bundle de React automáticamente -->
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

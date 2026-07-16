@@ -1,0 +1,13 @@
+# Dependencias de Node
+node_modules/
+
+# Carpetas de compilación (producción)
+dist/
+dist-app/
+
+
+
+# Variables de entorno secretas (como tu API key de DeepSeek si la guardas en un .env)
+
+
+# Archivos temporales del sistema

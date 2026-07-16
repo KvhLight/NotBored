@@ -1,0 +1,19 @@
+{
+  "name": "Proyecto Yo",
+  "short_name": "Proyecto Yo",
+  "description": "Chat de rol con personajes generados por IA",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0b0713",
+  "theme_color": "#0b0713",
+  "icons": [
+    {
+      "src": "/Icon.png",
+      "sizes": "360x360",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
