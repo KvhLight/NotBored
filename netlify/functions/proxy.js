@@ -17,6 +17,16 @@
 // directo desde el navegador.
 // ============================================================================
 
+// Solo estos dominios pueden ser destino del proxy — evita que alguien use
+// esta función como intermediario anónimo hacia cualquier web. Si añades un
+// proveedor nuevo en src/config/providers.js, añade también su dominio aquí.
+const ALLOWED_HOSTS = [
+  'api.deepseek.com',
+  'generativelanguage.googleapis.com',
+  'api.mistral.ai',
+  'api.cerebras.ai',
+];
+
 export default async (req) => {
   if (req.method !== 'POST') {
     return new Response('Method not allowed', { status: 405 });
@@ -28,6 +38,23 @@ export default async (req) => {
     if (!url || typeof url !== 'string') {
       return new Response(JSON.stringify({ error: 'Falta url.' }), {
         status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    let hostname;
+    try {
+      hostname = new URL(url).hostname;
+    } catch {
+      return new Response(JSON.stringify({ error: 'URL inválida.' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (!ALLOWED_HOSTS.includes(hostname)) {
+      return new Response(JSON.stringify({ error: 'Dominio no permitido.' }), {
+        status: 403,
         headers: { 'Content-Type': 'application/json' },
       });
     }

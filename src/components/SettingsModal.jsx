@@ -185,6 +185,30 @@ export default function SettingsModal({ onClose }) {
 	}
 
 
+  async function handleExportBackup() {
+    const result = await window.electronAPI.data.exportAll();
+    if (result?.success) {
+      setError('');
+      setSuccess('Copia de seguridad descargada.');
+      setTimeout(() => setSuccess(''), 3000);
+    } else {
+      setError(result?.error || 'No se pudo exportar la copia.');
+    }
+  }
+
+  async function handleImportBackup() {
+    const result = await window.electronAPI.data.importAll();
+    if (result?.success) {
+      setError('');
+      setSuccess('Copia restaurada. Reiniciando la app...');
+      setTimeout(() => window.location.reload(), 1200);
+    } else if (result?.canceled) {
+      // el usuario cerró el selector de archivo sin elegir nada, no pasa nada
+    } else {
+      setError(result?.error || 'No se pudo importar la copia. ¿Es un archivo válido?');
+    }
+  }
+
   async function saveSettings() {
     const currentProviderMeta = PROVIDERS[provider] || {};
     const currentKey = apiKeys[provider] || '';
@@ -263,6 +287,17 @@ export default function SettingsModal({ onClose }) {
                 <span>🤖 {t('settings.ai')}</span>
                 <span>›</span>
               </button>
+
+              {/* Solo aparece en la versión web (PWA) — Electron guarda los datos de otra forma */}
+              {window.electronAPI?.data && (
+                <button
+                  onClick={() => setSection('backup')}
+                  className='w-full flex items-center justify-between p-4 rounded-xl bg-card-bg border border-white/10 hover:bg-white/5'
+                >
+                  <span>💾 Copia de seguridad</span>
+                  <span>›</span>
+                </button>
+              )}
             </div>
           )}
           	{/*	Apariencia	—	NUEVA	SECCIÓN	*/}
@@ -722,6 +757,49 @@ export default function SettingsModal({ onClose }) {
                   {lang === 'es' && <span>✓</span>}
                 </button>
                 
+              </div>
+            </>
+          )}
+
+          {section === 'backup' && (
+            <>
+              <button
+                onClick={() => setSection('main')}
+                className='text-sm text-gray-400 hover:text-white mb-4'
+              >
+                ← {t('settings.back')}
+              </button>
+
+              <h3 className='text-lg font-semibold text-white mb-2'>
+                💾 Copia de seguridad
+              </h3>
+              <p className='text-xs text-gray-500 mb-4'>
+                Tus personajes y conversaciones viven solo en este dispositivo.
+                Si cambias de móvil o se borran los datos del navegador, los
+                pierdes para siempre a menos que tengas una copia guardada.
+              </p>
+
+              <div className='space-y-3'>
+                <button
+                  onClick={handleExportBackup}
+                  className='w-full flex items-center justify-center gap-2 p-4 rounded-xl
+                            bg-accent hover:bg-accent/80 transition-colors text-white'
+                >
+                  <Save size={14} /> Exportar copia (.json)
+                </button>
+
+                <button
+                  onClick={handleImportBackup}
+                  className='w-full flex items-center justify-center gap-2 p-4 rounded-xl
+                            border border-white/10 bg-card-bg hover:bg-white/5 transition-colors'
+                >
+                  📥 Importar copia
+                </button>
+
+                <p className='text-xs text-gray-600'>
+                  Importar una copia <strong>reemplaza</strong> todos los personajes
+                  y conversaciones actuales de este dispositivo por los del archivo.
+                </p>
               </div>
             </>
           )}

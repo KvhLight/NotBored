@@ -539,6 +539,72 @@ async function deleteAvatar() {
 /* ==========================================================================
    ADAPTADOR FINAL
    ========================================================================== */
+/* ==========================================================================
+   COPIA DE SEGURIDAD — exporta/importa todo lo guardado en localStorage
+   ========================================================================== */
+const BACKUP_KEYS = ['characters', 'conversations', 'settings', 'uiPreferences'];
+
+async function exportAllData() {
+  try {
+    const payload = {
+      app: 'proyecto-yo',
+      backupVersion: 1,
+      exportedAt: new Date().toISOString(),
+      data: Object.fromEntries(BACKUP_KEYS.map(k => [k, load(k, null)])),
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const stamp = new Date().toISOString().slice(0, 10);
+    a.href = url;
+    a.download = `proyecto-yo-backup-${stamp}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+function readFileAsText(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsText(file);
+  });
+}
+
+async function importAllData() {
+  const file = await new Promise((resolve) => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'application/json,.json';
+    input.onchange = () => resolve(input.files?.[0] || null);
+    input.click();
+  });
+
+  if (!file) return { success: false, canceled: true };
+
+  try {
+    const text = await readFileAsText(file);
+    const parsed = JSON.parse(text);
+    if (!parsed?.data || parsed.app !== 'proyecto-yo') {
+      return { success: false, error: 'El archivo no es una copia de seguridad válida.' };
+    }
+    for (const key of BACKUP_KEYS) {
+      if (parsed.data[key] !== undefined && parsed.data[key] !== null) {
+        persist(key, parsed.data[key]);
+      }
+    }
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: 'El archivo no se pudo leer como JSON válido.' };
+  }
+}
+
 const webAdapter = {
   characters: {
     getAll: async () => getAllCharacters(),
@@ -572,6 +638,7 @@ const webAdapter = {
   image: { selectFile, saveAvatar, toBase64, deleteAvatar },
   forge: { generateCharacter: forgeGenerateCharacter },
   ollama: { getModels: async () => getOllamaModels() },
+  data: { exportAll: exportAllData, importAll: importAllData },
 };
 
 export function installWebAdapterIfNeeded() {
