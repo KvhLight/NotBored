@@ -45,6 +45,7 @@ export default async (req) => {
       headers['Authorization'] = `Bearer ${apiKey || ''}`;
     }
 
+    console.log("REQUEST:", JSON.stringify(body, null, 2));
     const upstream = await fetch(targetURL, {
       method: 'POST',
       headers,

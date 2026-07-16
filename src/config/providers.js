@@ -34,8 +34,11 @@ export const PROVIDERS = {
     baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/',
     requiresApiKey: true,
     keyPlaceholder: 'AIza...',
-    models: ['gemini-2.5-flash', 'gemini-2.5-flash-lite'],
-    defaultModel: 'gemini-2.5-flash',
+    models: [
+      'gemini-2.5-flash-lite',
+      'gemini-2.5-pro'
+    ],
+    defaultModel: 'gemini-2.5-flash-lite',
   },
 
   mistral: {
