@@ -16,8 +16,10 @@ export const PROVIDERS = {
     baseURL: 'https://api.deepseek.com/v1',
     requiresApiKey: true,
     keyPlaceholder: 'sk-...',
-    models: ['deepseek-chat', 'deepseek-reasoner'],
-    defaultModel: 'deepseek-chat',
+    // deepseek-chat / deepseek-reasoner se retiran el 24 de julio de 2026.
+    // deepseek-v4-flash = rápido y barato · deepseek-v4-pro = mejor calidad
+    models: ['deepseek-v4-flash', 'deepseek-v4-pro'],
+    defaultModel: 'deepseek-v4-flash',
   },
   ollama: {
     label: 'Ollama (red local)',
@@ -34,11 +36,9 @@ export const PROVIDERS = {
     baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/',
     requiresApiKey: true,
     keyPlaceholder: 'AIza...',
-    models: [
-      'gemini-2.5-flash-lite',
-      'gemini-2.5-pro'
-    ],
-    defaultModel: 'gemini-2.5-flash-lite',
+    // La serie 2.5 ya no está disponible para keys nuevas — usa la serie 3.x
+    models: ['gemini-3.5-flash', 'gemini-3.1-flash-lite'],
+    defaultModel: 'gemini-3.1-flash-lite',
   },
 
   mistral: {

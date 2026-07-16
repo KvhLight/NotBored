@@ -1,5 +1,15 @@
 // ============================================================================
-// netlify/functions/proxy.js - Versión Universal Inteligente
+// netlify/functions/proxy.js
+//
+// Proxy server-side hacia el proveedor de IA elegido. Existe por un motivo
+// muy concreto: algunas APIs (Gemini es el caso confirmado) NO permiten que
+// un navegador las llame directamente (bloquean CORS). Al pasar la petición
+// por aquí, la llamada real sale desde el servidor de Netlify, no desde el
+// navegador — así que el bloqueo de CORS no aplica nunca.
+//
+// Ollama NO pasa por aquí: como corre en tu red local (tu PC), este proxy
+// (que vive en la nube) no podría alcanzarlo. Ollama sigue llamándose
+// directo desde el navegador, como hasta ahora.
 // ============================================================================
 
 export default async (req) => {
@@ -17,51 +27,21 @@ export default async (req) => {
       });
     }
 
-    // Identificamos si es una URL directa de Gemini o un endpoint estándar
-    const isGemini = baseURL.includes('googleapis.com');
-    
-    let targetURL = baseURL;
-    let headers = { 'Content-Type': 'application/json' };
-
-    if (isGemini) {
-      const cleanBase = baseURL.replace(/\/+$/, '');
-
-      headers = {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      };
-
-      targetURL = cleanBase.endsWith('/chat/completions')
-        ? cleanBase
-        : `${cleanBase}/chat/completions`;
-
-      console.log(targetURL);
-    } else {
-      // Para DeepSeek u otros, construimos la ruta estándar e incluimos la cabecera de autenticación
-      const cleanBase = baseURL.replace(/\/+$/, '');
-      if (!cleanBase.endsWith('/chat/completions')) {
-        targetURL = `${cleanBase}/chat/completions`;
-      }
-      headers['Authorization'] = `Bearer ${apiKey || ''}`;
-    }
-
-    console.log("REQUEST:", JSON.stringify(body, null, 2));
-    const upstream = await fetch(targetURL, {
+    const cleanBase = baseURL.replace(/\/+$/, ''); // sin barra final duplicada
+    const upstream = await fetch(`${cleanBase}/chat/completions`, {
       method: 'POST',
-      headers,
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey || ''}`,
+      },
       body: JSON.stringify(body),
     });
 
-    const responseText = await upstream.text();
-
-    console.log("URL:", targetURL);
-    console.log("STATUS:", upstream.status);
-    console.log("BODY:", responseText);
-
-    return new Response(responseText, {
+    // Reenviamos la respuesta tal cual llega (incluye el streaming SSE si body.stream === true)
+    return new Response(upstream.body, {
       status: upstream.status,
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': upstream.headers.get('content-type') || 'application/json',
       },
     });
   } catch (err) {
@@ -72,4 +52,6 @@ export default async (req) => {
   }
 };
 
+// Ruta limpia: la función queda accesible en /api/proxy en vez de
+// /.netlify/functions/proxy
 export const config = { path: '/api/proxy' };

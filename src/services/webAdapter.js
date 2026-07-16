@@ -282,44 +282,31 @@ async function getOllamaModels() {
     return [];
   }
 }
+
 async function sendMessage({ character, history, userMessage }) {
   const settings = getSettings();
-  // ¡CORRECCIÓN! Extraemos "providerId" de la configuración para evitar el error de variable indefinida
-  const { baseURL, apiKey, meta, providerId } = getProviderConfig(settings);
-  const isGemini = providerId === 'gemini';
-  const isOllama = providerId === 'ollama';
+  const { baseURL, apiKey, meta } = getProviderConfig(settings);
 
   if (meta.requiresApiKey && !apiKey) {
     listeners.error.forEach(cb => cb(`Falta la API Key de ${meta.label}. Ve a Ajustes → IA y pégala.`));
     return { success: false };
   }
-
   const systemPrompt = buildCharacterSystemPrompt(character);
-  let requestBody = {};
-  let targetURL = baseURL;
+  const contextMessages = buildContextWindow(history, systemPrompt, settings.maxContextTokens);
+  contextMessages.push({ role: 'user', content: userMessage });
 
-  // Todos los proveedores (incluido Gemini) usan el formato OpenAI
-  const contextMessages = buildContextWindow(
-    history,
-    systemPrompt,
-    settings.maxContextTokens
-  );
-
-  contextMessages.push({
-    role: 'user',
-    content: userMessage
-  });
-
-  requestBody = {
-    model: "gemini-2.5-flash-lite",
+  const requestBody = {
+    model: settings.model || meta.defaultModel,
     messages: contextMessages,
     temperature: settings.temperature || 0.85,
     max_tokens: settings.maxTokens || 1000,
-    stream: true
+    stream: true,
   };
 
-  // 2. Definir destino de red (Llamada local para Ollama / Proxy en la nube para el resto)
-  const fetchTarget = isOllama
+  // Ollama vive en tu red local: se llama directo, el proxy en la nube no
+  // podría alcanzarlo. Los demás proveedores pasan por /api/proxy para
+  // evitar bloqueos de CORS (Gemini, por ejemplo, los aplica siempre).
+  const fetchTarget = providerId === 'ollama'
     ? [`${baseURL}/chat/completions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
@@ -328,7 +315,7 @@ async function sendMessage({ character, history, userMessage }) {
     : ['/api/proxy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ baseURL: targetURL, apiKey, body: requestBody }),
+        body: JSON.stringify({ baseURL, apiKey, body: requestBody }),
       }];
 
   try {
@@ -351,33 +338,17 @@ async function sendMessage({ character, history, userMessage }) {
       buffer += decoder.decode(value, { stream: true });
       const lines = buffer.split('\n');
       buffer = lines.pop();
-
       for (const line of lines) {
         const trimmed = line.trim();
-        if (!trimmed) continue;
-
+        if (!trimmed.startsWith('data:')) continue;
+        const data = trimmed.slice(5).trim();
+        if (data === '[DONE]') continue;
         try {
-          if (isOllama) {
-            const json = JSON.parse(trimmed);
-            const delta = json.message?.content || '';
-            if (delta) listeners.chunk.forEach(cb => cb(delta));
-          } else if (isGemini) {
-            if (!trimmed.startsWith('data:')) continue;
-            const rawData = trimmed.slice(5).trim();
-            const json = JSON.parse(rawData);
-            const delta = json.candidates?.[0]?.content?.parts?.[0]?.text || '';
-            if (delta) listeners.chunk.forEach(cb => cb(delta));
-          } else {
-            // DeepSeek
-            if (!trimmed.startsWith('data:')) continue;
-            const data = trimmed.slice(5).trim();
-            if (data === '[DONE]') continue;
-            const json = JSON.parse(data);
-            const delta = json.choices?.[0]?.delta?.content || '';
-            if (delta) listeners.chunk.forEach(cb => cb(delta));
-          }
+          const json = JSON.parse(data);
+          const delta = json.choices?.[0]?.delta?.content || '';
+          if (delta) listeners.chunk.forEach(cb => cb(delta));
         } catch {
-          // Fragmento parcial de streaming
+          // fragmento parcial, se completará en el siguiente chunk
         }
       }
     }
@@ -387,7 +358,7 @@ async function sendMessage({ character, history, userMessage }) {
   } catch (err) {
     let msg = err.message;
     if (msg === 'Failed to fetch' || msg === 'Load failed') {
-      msg = isOllama
+      msg = providerId === 'ollama'
         ? 'No se pudo conectar con Ollama. ¿Está tu PC encendido, Ollama corriendo y estás en la misma WiFi?'
         : 'Sin conexión a internet, o el servicio no respondió.';
     }
@@ -395,6 +366,7 @@ async function sendMessage({ character, history, userMessage }) {
     return { success: false };
   }
 }
+
 /* ==========================================================================
    FORGE — generación automática de personajes
    ========================================================================== */
