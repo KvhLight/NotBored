@@ -135,10 +135,11 @@ export default function App() {
 		}
 
   return (
-    // Contenedor principal — aspecto móvil centrado
-    <div className='flex items-center justify-center min-h-screen bg-gray-950'>
+    // Contenedor principal — pantalla completa en móvil real;
+    // la "maqueta de móvil" de tamaño fijo solo se aplica en desktop (sm: y superior)
+    <div className='flex items-center justify-center min-h-dvh bg-gray-950'>
       <div	className='app-wallpaper-layer'	/>
-      <div className='relative w-[430px] h-[920px] bg-app-bg overflow-hidden rounded-3xl shadow-2xl border border-white/5'>
+      <div className='relative w-full h-dvh sm:w-[430px] sm:h-[920px] bg-app-bg overflow-hidden sm:rounded-3xl sm:shadow-2xl sm:border sm:border-white/5'>
         <AnimatePresence mode='wait'>
           
           {/* VISTA: SIDEBAR */}
