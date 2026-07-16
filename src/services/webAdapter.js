@@ -296,46 +296,27 @@ async function sendMessage({ character, history, userMessage }) {
 
   const systemPrompt = buildCharacterSystemPrompt(character);
   let requestBody = {};
-  let targetURL = `${baseURL}/chat/completions`;
+  let targetURL = baseURL;
 
-  // 1. Preparar el Payload según el proveedor de IA
-  if (isGemini) {
-    // Convertimos el historial al formato nativo de Gemini { role, parts: [{ text }] }
-    const geminiContents = history.map(msg => ({
-      role: msg.role === 'assistant' ? 'model' : 'user',
-      parts: [{ text: msg.content }]
-    }));
-    
-    geminiContents.push({
-      role: 'user',
-      parts: [{ text: userMessage }]
-    });
+  // Todos los proveedores (incluido Gemini) usan el formato OpenAI
+  const contextMessages = buildContextWindow(
+    history,
+    systemPrompt,
+    settings.maxContextTokens
+  );
 
-    requestBody = {
-      contents: geminiContents,
-      systemInstruction: {
-        parts: [{ text: systemPrompt }]
-      },
-      generationConfig: {
-        temperature: settings.temperature || 0.85,
-        maxOutputTokens: settings.maxTokens || 1000,
-      }
-    };
-    // El endpoint de Gemini utiliza streamGenerateContent
-    targetURL = `https://generativelanguage.googleapis.com/v1beta/models/${settings.model || 'gemini-2.5-flash'}:streamGenerateContent?alt=sse`;
-  } else {
-    // Formato estándar (Ollama / DeepSeek)
-    const contextMessages = buildContextWindow(history, systemPrompt, settings.maxContextTokens);
-    contextMessages.push({ role: 'user', content: userMessage });
+  contextMessages.push({
+    role: 'user',
+    content: userMessage
+  });
 
-    requestBody = {
-      model: settings.model || meta.defaultModel,
-      messages: contextMessages,
-      temperature: settings.temperature || 0.85,
-      max_tokens: settings.maxTokens || 1000,
-      stream: true,
-    };
-  }
+  requestBody = {
+    model: settings.model || meta.defaultModel,
+    messages: contextMessages,
+    temperature: settings.temperature || 0.85,
+    max_tokens: settings.maxTokens || 1000,
+    stream: true
+  };
 
   // 2. Definir destino de red (Llamada local para Ollama / Proxy en la nube para el resto)
   const fetchTarget = isOllama

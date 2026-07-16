@@ -24,14 +24,13 @@ export default async (req) => {
     let headers = { 'Content-Type': 'application/json' };
 
     if (isGemini) {
-      // Para Gemini, añadimos la API key como un parámetro de la URL final en el servidor de Netlify
       const cleanBase = baseURL.replace(/\/+$/, '');
+
       targetURL = cleanBase.endsWith('/chat/completions')
         ? `${cleanBase}?key=${apiKey || ''}`
         : `${cleanBase}/chat/completions?key=${apiKey || ''}`;
-        console.log(targetURL);
-        const text = await upstream.text();
-        console.log(text);
+
+      console.log(targetURL);
     } else {
       // Para DeepSeek u otros, construimos la ruta estándar e incluimos la cabecera de autenticación
       const cleanBase = baseURL.replace(/\/+$/, '');
@@ -43,14 +42,20 @@ export default async (req) => {
 
     const upstream = await fetch(targetURL, {
       method: 'POST',
-      headers: headers,
+      headers,
       body: JSON.stringify(body),
     });
 
-    return new Response(upstream.body, {
+    const responseText = await upstream.text();
+
+    console.log("URL:", targetURL);
+    console.log("STATUS:", upstream.status);
+    console.log("BODY:", responseText);
+
+    return new Response(responseText, {
       status: upstream.status,
       headers: {
-        'Content-Type': upstream.headers.get('content-type') || 'application/json',
+        'Content-Type': 'application/json',
       },
     });
   } catch (err) {
