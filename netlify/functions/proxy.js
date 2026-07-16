@@ -1,15 +1,5 @@
 // ============================================================================
-// netlify/functions/proxy.js
-//
-// Proxy server-side hacia el proveedor de IA elegido. Existe por un motivo
-// muy concreto: algunas APIs (Gemini es el caso confirmado) NO permiten que
-// un navegador las llame directamente (bloquean CORS). Al pasar la petición
-// por aquí, la llamada real sale desde el servidor de Netlify, no desde el
-// navegador — así que el bloqueo de CORS no aplica nunca.
-//
-// Ollama NO pasa por aquí: como corre en tu red local (tu PC), este proxy
-// (que vive en la nube) no podría alcanzarlo. Ollama sigue llamándose
-// directo desde el navegador, como hasta ahora.
+// netlify/functions/proxy.js - Versión Universal Inteligente
 // ============================================================================
 
 export default async (req) => {
@@ -27,17 +17,30 @@ export default async (req) => {
       });
     }
 
-    const cleanBase = baseURL.replace(/\/+$/, ''); // sin barra final duplicada
-    const upstream = await fetch(`${cleanBase}/chat/completions`, {
+    // Identificamos si es una URL directa de Gemini o un endpoint estándar
+    const isGemini = baseURL.includes('googleapis.com');
+    
+    let targetURL = baseURL;
+    let headers = { 'Content-Type': 'application/json' };
+
+    if (isGemini) {
+      // Para Gemini, añadimos la API key como un parámetro de la URL final en el servidor de Netlify
+      targetURL = `${baseURL}&key=${apiKey || ''}`;
+    } else {
+      // Para DeepSeek u otros, construimos la ruta estándar e incluimos la cabecera de autenticación
+      const cleanBase = baseURL.replace(/\/+$/, '');
+      if (!cleanBase.endsWith('/chat/completions')) {
+        targetURL = `${cleanBase}/chat/completions`;
+      }
+      headers['Authorization'] = `Bearer ${apiKey || ''}`;
+    }
+
+    const upstream = await fetch(targetURL, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey || ''}`,
-      },
+      headers: headers,
       body: JSON.stringify(body),
     });
 
-    // Reenviamos la respuesta tal cual llega (incluye el streaming SSE si body.stream === true)
     return new Response(upstream.body, {
       status: upstream.status,
       headers: {
@@ -52,6 +55,4 @@ export default async (req) => {
   }
 };
 
-// Ruta limpia: la función queda accesible en /api/proxy en vez de
-// /.netlify/functions/proxy
 export const config = { path: '/api/proxy' };

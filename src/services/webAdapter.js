@@ -282,31 +282,63 @@ async function getOllamaModels() {
     return [];
   }
 }
-
 async function sendMessage({ character, history, userMessage }) {
   const settings = getSettings();
-  const { baseURL, apiKey, meta } = getProviderConfig(settings);
+  // ¡CORRECCIÓN! Extraemos "providerId" de la configuración para evitar el error de variable indefinida
+  const { baseURL, apiKey, meta, providerId } = getProviderConfig(settings);
+  const isGemini = providerId === 'gemini';
+  const isOllama = providerId === 'ollama';
 
   if (meta.requiresApiKey && !apiKey) {
     listeners.error.forEach(cb => cb(`Falta la API Key de ${meta.label}. Ve a Ajustes → IA y pégala.`));
     return { success: false };
   }
+
   const systemPrompt = buildCharacterSystemPrompt(character);
-  const contextMessages = buildContextWindow(history, systemPrompt, settings.maxContextTokens);
-  contextMessages.push({ role: 'user', content: userMessage });
+  let requestBody = {};
+  let targetURL = `${baseURL}/chat/completions`;
 
-  const requestBody = {
-    model: settings.model || meta.defaultModel,
-    messages: contextMessages,
-    temperature: settings.temperature || 0.85,
-    max_tokens: settings.maxTokens || 1000,
-    stream: true,
-  };
+  // 1. Preparar el Payload según el proveedor de IA
+  if (isGemini) {
+    // Convertimos el historial al formato nativo de Gemini { role, parts: [{ text }] }
+    const geminiContents = history.map(msg => ({
+      role: msg.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: msg.content }]
+    }));
+    
+    geminiContents.push({
+      role: 'user',
+      parts: [{ text: userMessage }]
+    });
 
-  // Ollama vive en tu red local: se llama directo, el proxy en la nube no
-  // podría alcanzarlo. Los demás proveedores pasan por /api/proxy para
-  // evitar bloqueos de CORS (Gemini, por ejemplo, los aplica siempre).
-  const fetchTarget = providerId === 'ollama'
+    requestBody = {
+      contents: geminiContents,
+      systemInstruction: {
+        parts: [{ text: systemPrompt }]
+      },
+      generationConfig: {
+        temperature: settings.temperature || 0.85,
+        maxOutputTokens: settings.maxTokens || 1000,
+      }
+    };
+    // El endpoint de Gemini utiliza streamGenerateContent
+    targetURL = `https://generativelanguage.googleapis.com/v1beta/models/${settings.model || 'gemini-2.5-flash'}:streamGenerateContent?alt=sse`;
+  } else {
+    // Formato estándar (Ollama / DeepSeek)
+    const contextMessages = buildContextWindow(history, systemPrompt, settings.maxContextTokens);
+    contextMessages.push({ role: 'user', content: userMessage });
+
+    requestBody = {
+      model: settings.model || meta.defaultModel,
+      messages: contextMessages,
+      temperature: settings.temperature || 0.85,
+      max_tokens: settings.maxTokens || 1000,
+      stream: true,
+    };
+  }
+
+  // 2. Definir destino de red (Llamada local para Ollama / Proxy en la nube para el resto)
+  const fetchTarget = isOllama
     ? [`${baseURL}/chat/completions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
@@ -315,7 +347,7 @@ async function sendMessage({ character, history, userMessage }) {
     : ['/api/proxy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ baseURL, apiKey, body: requestBody }),
+        body: JSON.stringify({ baseURL: targetURL, apiKey, body: requestBody }),
       }];
 
   try {
@@ -338,17 +370,33 @@ async function sendMessage({ character, history, userMessage }) {
       buffer += decoder.decode(value, { stream: true });
       const lines = buffer.split('\n');
       buffer = lines.pop();
+
       for (const line of lines) {
         const trimmed = line.trim();
-        if (!trimmed.startsWith('data:')) continue;
-        const data = trimmed.slice(5).trim();
-        if (data === '[DONE]') continue;
+        if (!trimmed) continue;
+
         try {
-          const json = JSON.parse(data);
-          const delta = json.choices?.[0]?.delta?.content || '';
-          if (delta) listeners.chunk.forEach(cb => cb(delta));
+          if (isOllama) {
+            const json = JSON.parse(trimmed);
+            const delta = json.message?.content || '';
+            if (delta) listeners.chunk.forEach(cb => cb(delta));
+          } else if (isGemini) {
+            if (!trimmed.startsWith('data:')) continue;
+            const rawData = trimmed.slice(5).trim();
+            const json = JSON.parse(rawData);
+            const delta = json.candidates?.[0]?.content?.parts?.[0]?.text || '';
+            if (delta) listeners.chunk.forEach(cb => cb(delta));
+          } else {
+            // DeepSeek
+            if (!trimmed.startsWith('data:')) continue;
+            const data = trimmed.slice(5).trim();
+            if (data === '[DONE]') continue;
+            const json = JSON.parse(data);
+            const delta = json.choices?.[0]?.delta?.content || '';
+            if (delta) listeners.chunk.forEach(cb => cb(delta));
+          }
         } catch {
-          // fragmento parcial, se completará en el siguiente chunk
+          // Fragmento parcial de streaming
         }
       }
     }
@@ -358,7 +406,7 @@ async function sendMessage({ character, history, userMessage }) {
   } catch (err) {
     let msg = err.message;
     if (msg === 'Failed to fetch' || msg === 'Load failed') {
-      msg = providerId === 'ollama'
+      msg = isOllama
         ? 'No se pudo conectar con Ollama. ¿Está tu PC encendido, Ollama corriendo y estás en la misma WiFi?'
         : 'Sin conexión a internet, o el servicio no respondió.';
     }
@@ -366,7 +414,6 @@ async function sendMessage({ character, history, userMessage }) {
     return { success: false };
   }
 }
-
 /* ==========================================================================
    FORGE — generación automática de personajes
    ========================================================================== */
