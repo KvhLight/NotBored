@@ -342,10 +342,14 @@ async function sendMessage({ character, history, userMessage }) {
     const resp = await fetch(...fetchTarget);
 
     if (!resp.ok) {
-      if (resp.status === 401) throw new Error('API Key inválida o expirada.');
+      const bodyText = await resp.text().catch(() => '');
+      let detail = '';
+      try { detail = JSON.parse(bodyText)?.error?.message || ''; } catch { detail = bodyText.slice(0, 200); }
+      if (resp.status === 401) throw new Error(`API Key inválida o expirada.${detail ? ` (${detail})` : ''}`);
+      if (resp.status === 404) throw new Error(`Modelo no encontrado en ${meta.label}.${detail ? ` (${detail})` : ''}`);
       if (resp.status === 429) throw new Error('Rate limit alcanzado. Espera un momento.');
       if (resp.status === 503) throw new Error(`El servicio de ${meta.label} no está disponible.`);
-      throw new Error(`Error de ${meta.label} (código ${resp.status}).`);
+      throw new Error(`Error de ${meta.label} (código ${resp.status}).${detail ? ` ${detail}` : ''}`);
     }
 
     const reader = resp.body.getReader();
@@ -455,7 +459,12 @@ You MUST respond using this exact JSON structure:
 
   try {
     const resp = await fetch(...forgeTarget);
-    if (!resp.ok) throw new Error(`Error al forjar personaje (código ${resp.status}).`);
+    if (!resp.ok) {
+      const bodyText = await resp.text().catch(() => '');
+      let detail = '';
+      try { detail = JSON.parse(bodyText)?.error?.message || ''; } catch { detail = bodyText.slice(0, 200); }
+      throw new Error(`Error al forjar personaje (código ${resp.status}).${detail ? ` ${detail}` : ''}`);
+    }
     const data = await resp.json();
     const raw = meta.format === 'gemini-native'
       ? (data.candidates?.[0]?.content?.parts?.[0]?.text || '')
