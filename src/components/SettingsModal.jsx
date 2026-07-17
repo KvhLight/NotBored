@@ -69,7 +69,10 @@ export default function SettingsModal({ onClose }) {
   // (uiPrefs.themeMode) que ya tenemos disponible.
   const isLightMode = uiPrefs.themeMode === 'light';
   const textPrimary = isLightMode ? 'text-gray-900' : 'text-white';
-
+  const textSecondary =
+  isLightMode
+    ? 'text-gray-600'
+    : 'text-gray-400';
 
   // Cargar settings actuales al abrir
   useEffect(() => {
@@ -259,7 +262,7 @@ export default function SettingsModal({ onClose }) {
             <h2 className={`text-sm font-bold ${textPrimary}`}>{t('settings.title')}</h2>
           </div>
           <button onClick={onClose}
-            className='p-1.5 rounded-lg hover:bg-white/10 text-gray-400'>
+            className='p-1.5 rounded-lg hover:bg-white/10 textSecondary'>
             <X size={16} />
           </button>
         </div>
@@ -272,21 +275,21 @@ export default function SettingsModal({ onClose }) {
                 onClick={() => setSection('profile')}
                 className='w-full flex items-center justify-between p-4 rounded-xl bg-card-bg border border-white/10 hover:bg-white/5'
               >
-                <span>👤 {t('settings.profile')}</span>
+                <span className={textPrimary}>👤 {t('settings.profile')}</span>
                 <span>›</span>
               </button>
               <button
 		  					onClick={()	=>	setSection('appearance')}
 								className='w-full flex items-center justify-between p-4 rounded-xl bg-card-bg border border-white/10 hover:bg white/5'
 							>
-	  						<span>	{t('settings.appearance')}</span>
+	  						<span className={textPrimary}>	{t('settings.appearance')}</span>
 								<span>›</span>
   						</button>
               <button
                 onClick={() => setSection('language')}
                 className='w-full flex items-center justify-between p-4 rounded-xl bg-card-bg border border-white/10 hover:bg-white/5'
               >
-                <span>🌍 {t('settings.language')}</span>
+                <span className={textPrimary}>🌍 {t('settings.language')}</span>
                 <span>›</span>
               </button>
 
@@ -294,7 +297,7 @@ export default function SettingsModal({ onClose }) {
                 onClick={() => setSection('ai')}
                 className='w-full flex items-center justify-between p-4 rounded-xl bg-card-bg border border-white/10 hover:bg-white/5'
               >
-                <span>🤖 {t('settings.ai')}</span>
+                <span className={textPrimary}>🤖 {t('settings.ai')}</span>
                 <span>›</span>
               </button>
 
@@ -304,7 +307,7 @@ export default function SettingsModal({ onClose }) {
                   onClick={() => setSection('backup')}
                   className='w-full flex items-center justify-between p-4 rounded-xl bg-card-bg border border-white/10 hover:bg-white/5'
                 >
-                  <span>💾 {t('settings.backup')}</span>
+                  <span className={textPrimary}>💾 {t('settings.backup')}</span>
                   <span>›</span>
                 </button>
               )}
@@ -315,7 +318,7 @@ export default function SettingsModal({ onClose }) {
 												<>
 														<button
 																onClick={()	=>	setSection('main')}
-																className='text-sm	text-gray-400	hover:text-white'
+																className='text-sm	textSecondary	hover:text-white'
 														>
 																←	{t('settings.back')}
 														</button>
@@ -331,13 +334,13 @@ export default function SettingsModal({ onClose }) {
 									<div className='grid grid-cols-2 gap-2'>
 										<button
 											onClick={() => saveThemeMode('dark')}
-											className={`flex items-center justify-center gap-2 py-2.5 rounded-xl border text-sm transition-all ${(uiPrefs.themeMode || 'dark') === 'dark' ? `border-white/60 bg-white/5 ${textPrimary}` : 'border-white/10 text-gray-400 hover:border-white/30'}`}
+											className={`flex items-center justify-center gap-2 py-2.5 rounded-xl border text-sm transition-all ${(uiPrefs.themeMode || 'dark') === 'dark' ? `border-white/60 bg-white/5 ${textPrimary}` : 'border-white/10 textSecondary hover:border-white/30'}`}
 										>
 											<Moon size={14} /> {t('appearance.dark')}
 										</button>
 										<button
 											onClick={() => saveThemeMode('light')}
-											className={`flex items-center justify-center gap-2 py-2.5 rounded-xl border text-sm transition-all ${uiPrefs.themeMode === 'light' ? `border-accent bg-accent/10 ${textPrimary}` : 'border-white/10 text-gray-400 hover:border-white/30'}`}
+											className={`flex items-center justify-center gap-2 py-2.5 rounded-xl border text-sm transition-all ${uiPrefs.themeMode === 'light' ? `border-accent bg-accent/10 ${textPrimary}` : 'border-white/10 textSecondary hover:border-white/30'}`}
 										>
 											<Sun size={14} /> {t('appearance.light')}
 										</button>
@@ -369,7 +372,7 @@ export default function SettingsModal({ onClose }) {
 																								>
 																										{isActive	&&	<Check	size={14}	className='text-white'	/>}
 																								</span>
-																								<span	className='text-[10px]	text-gray-400'>{preset.label}</span>
+																								<span	className='text-[10px]	textSecondary'>{preset.label}</span>
 																						</button>
 																				);
 																		})}
@@ -439,7 +442,7 @@ export default function SettingsModal({ onClose }) {
                         {t('appearance.applyWallpaper')}
                         </button>
                         <button type='button' onClick={handleCancelWallpaperPreview}
-                        className='flex-1 bg-card-bg text-gray-400 text-xs font-semibold
+                        className='flex-1 bg-card-bg textSecondary text-xs font-semibold
                         py-2 rounded-xl border border-white/10
                         hover:bg-white/5 transition-colors'>
                         {t('appearance.cancelWallpaper')}
@@ -464,7 +467,7 @@ export default function SettingsModal({ onClose }) {
                         {appWallpaper && !wallpaperPreview && (
                         <button type='button' onClick={handleRemoveWallpaper}
                         title={t('appearance.removeWallpaper')}
-                        className='px-3 rounded-xl border border-white/10 text-gray-400
+                        className='px-3 rounded-xl border border-white/10 textSecondary
                         hover:text-red-400 hover:border-red-500/40
                         transition-colors'>
                         <Trash2 size={14} />
@@ -474,7 +477,7 @@ export default function SettingsModal({ onClose }) {
                         {previousWallpaper && !wallpaperPreview && (
                         <button type='button' onClick={handleRevertWallpaper}
                         title={t('appearance.revertWallpaper')}
-                        className='px-3 rounded-xl border border-white/10 text-gray-400
+                        className='px-3 rounded-xl border border-white/10 textSecondary
                         hover:text-accent-2 hover:border-accent-2/40
                         transition-colors'>
                         <RotateCcw size={14} />
@@ -496,7 +499,7 @@ export default function SettingsModal({ onClose }) {
                         ? t('appearance.confirmRemoveTitle')
                         : t('appearance.confirmRevertTitle')}
                         </p>
-                        <p className='text-xs text-gray-400 mb-4'>
+                        <p className='text-xs textSecondary mb-4'>
                         {confirmTarget === 'remove'
                         ? t('appearance.confirmRemoveDesc')
                         : t('appearance.confirmRevertDesc')}
@@ -510,7 +513,7 @@ export default function SettingsModal({ onClose }) {
                         {t('appearance.confirmYes')}
                         </button>
                         <button onClick={handleCancelAction}
-                        className='flex-1 bg-card-bg text-gray-400
+                        className='flex-1 bg-card-bg textSecondary
                         border border-white/10 rounded-xl py-2
                         text-xs font-semibold hover:bg-white/5
                         transition-colors'>
@@ -528,7 +531,7 @@ export default function SettingsModal({ onClose }) {
             <>
             <button
               onClick={() => setSection('main')}
-              className='text-sm text-gray-400 hover:text-white'
+              className={`text-sm textSecondary ${isLightMode ? 'hover:text-gray-900' : 'hover:text-white'}`}
             >
               ← {t('settings.back')}
             </button> 
@@ -628,7 +631,7 @@ export default function SettingsModal({ onClose }) {
             <>
               <button
                 onClick={() => setSection('main')}
-                className='text-sm text-gray-400 hover:text-white'
+                className={`text-sm textSecondary ${isLightMode ? 'hover:text-gray-900' : 'hover:text-white'}`}
               >
                 ← {t('settings.back')}
               </button>
@@ -756,7 +759,7 @@ export default function SettingsModal({ onClose }) {
             <>
               <button
                 onClick={() => setSection('main')}
-                className='text-sm text-gray-400 hover:text-white mb-4'
+                className='text-sm textSecondary hover:text-white mb-4'
               >
                 ← {t('settings.back')}
               </button>
@@ -775,7 +778,7 @@ export default function SettingsModal({ onClose }) {
                       : 'border-white/10 bg-card-bg hover:bg-white/5'
                   }`}
                 >
-                  <span>🇺🇸 English</span>
+                  <span className={textPrimary}>🇺🇸 English</span>
                   {lang === 'en' && <span>✓</span>}
                 </button>
 
@@ -787,7 +790,7 @@ export default function SettingsModal({ onClose }) {
                       : 'border-white/10 bg-card-bg hover:bg-white/5'
                   }`}
                 >
-                  <span>🇪🇸 Español</span>
+                  <span className={textPrimary}>🇪🇸 Español</span>
                   {lang === 'es' && <span>✓</span>}
                 </button>
                 
@@ -799,7 +802,7 @@ export default function SettingsModal({ onClose }) {
             <>
               <button
                 onClick={() => setSection('main')}
-                className='text-sm text-gray-400 hover:text-white mb-4'
+                className='text-sm textSecondary hover:text-white mb-4'
               >
                 ← {t('settings.back')}
               </button>
