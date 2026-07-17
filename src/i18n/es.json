@@ -43,7 +43,16 @@
     "language": "Idioma",
     "ai": "Ajustes IA",
     "back": "Atrás",
-    "appearance":	"Apariencia"
+    "appearance":	"Apariencia",
+    "backup": "Copia de seguridad",
+    "backupDesc": "Tus personajes y conversaciones viven solo en este dispositivo. Si cambias de móvil o se borran los datos del navegador, los pierdes para siempre a menos que tengas una copia guardada.",
+    "exportBackup": "Exportar copia (.json)",
+    "importBackup": "Importar copia",
+    "importWarning": "Importar una copia reemplaza todos los personajes y conversaciones actuales de este dispositivo por los del archivo.",
+    "exportSuccess": "Copia de seguridad descargada.",
+    "exportError": "No se pudo exportar la copia.",
+    "importSuccess": "Copia restaurada. Reiniciando la app...",
+    "importError": "No se pudo importar la copia. ¿Es un archivo válido?"
   },
   "appearance": {
     "themeTitle": "Tema de color",
@@ -64,7 +73,11 @@
     "confirmRevertTitle": "Volver al fondo anterior?",
     "confirmRevertDesc": "Se restaurara el fondo de pantalla que tenias antes.",
     "confirmYes": "Si, confirmar",
-    "confirmNo": "Cancelar"
+    "confirmNo": "Cancelar",
+    "brightnessTitle": "Brillo",
+    "brightnessSubtitle": "Elige entre un tema oscuro o uno claro para toda la app",
+    "dark": "Oscuro",
+    "light": "Claro"
   },
   "profile":{
     "title": "Mi Perfil",
