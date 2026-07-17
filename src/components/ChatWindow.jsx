@@ -17,6 +17,21 @@ export	default	function	ChatWindow({	character,	conversation,	onBack,	onNewChat,
 		const	inputRef	=	useRef(null);
 		const	convId	=	conversation.id;
 		const	chatWallpaper	=	getChatWallpaper(character.id);
+  const [maxContextTokens, setMaxContextTokens] = useState(4000);
+
+  // Estimación simple de tokens (misma heurística que usa el envío real: ~4 caracteres = 1 token)
+  function estimateTokens(text) {
+    return Math.ceil((text || '').length / 4);
+  }
+  const usedTokens = messages.reduce((sum, m) => sum + estimateTokens(m.content), 0);
+  const contextPercent = Math.min(100, Math.round((usedTokens / maxContextTokens) * 100));
+
+  useEffect(() => {
+    window.electronAPI.settings.get().then(s => {
+      if (s?.maxContextTokens) setMaxContextTokens(s.maxContextTokens);
+    });
+  }, []);
+
   //console.log("AVATAR:", character.avatar?.slice(0, 100));
   // Mensaje de bienvenida si es nueva conversación
   useEffect(() => {
@@ -215,8 +230,16 @@ export	default	function	ChatWindow({	character,	conversation,	onBack,	onNewChat,
         
         <div className='flex-1'>
           <p className='font-semibold text-white text-sm'>{character.name}</p>
-          <p className='text-xs text-accent-2'>
+          <p className='text-xs text-accent-2 flex items-center gap-1.5'>
             {isStreaming ? t('chat.typing') : t('chat.online')}
+            {!isStreaming && contextPercent > 0 && (
+              <span
+                className={`opacity-60 ${contextPercent >= 90 ? 'text-yellow-400 opacity-100' : ''}`}
+                title='Cuánto del contexto de la conversación se está usando'
+              >
+                · {contextPercent}% contexto
+              </span>
+            )}
           </p>
         </div>
         

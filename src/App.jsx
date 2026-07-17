@@ -30,11 +30,21 @@ export default function App() {
   const { t } = useApp();
   const [activeTagFilter, setActiveTagFilter] = useState(null);
   const [showAiBanner, setShowAiBanner] = useState(false);
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
   
   // Cargar personajes al inicio
   useEffect(() => {
     loadCharacters();
     checkAiConfigured();
+
+    const goOffline = () => setIsOffline(true);
+    const goOnline = () => setIsOffline(false);
+    window.addEventListener('offline', goOffline);
+    window.addEventListener('online', goOnline);
+    return () => {
+      window.removeEventListener('offline', goOffline);
+      window.removeEventListener('online', goOnline);
+    };
   }, []);
 
   async function checkAiConfigured() {
@@ -155,6 +165,14 @@ export default function App() {
     <div className='flex items-center justify-center min-h-dvh bg-gray-950'>
       <div	className='app-wallpaper-layer'	/>
       <div className='relative w-full h-dvh sm:w-[430px] sm:h-[920px] bg-app-bg overflow-hidden sm:rounded-3xl sm:shadow-2xl sm:border sm:border-white/5'>
+
+        {isOffline && (
+          <div className='absolute top-0 left-0 right-0 z-50 bg-yellow-600/90 backdrop-blur-sm
+                          text-white text-xs text-center py-2 px-3'>
+            📡 Sin conexión a internet — algunas funciones (como chatear) no estarán disponibles hasta que vuelvas a tener señal.
+          </div>
+        )}
+
         <AnimatePresence mode='wait'>
           
           {/* VISTA: SIDEBAR */}
