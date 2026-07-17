@@ -30,7 +30,7 @@ const DEFAULT_SETTINGS = {
   temperature: 0.85,
   maxTokens: 1000,
 };
-const DEFAULT_UI_PREFS = { themeHue: 262, appWallpaper: null, chatWallpapers: {} };
+const DEFAULT_UI_PREFS = { themeHue: 262, themeMode: 'dark', appWallpaper: null, chatWallpapers: {} };
 
 // ---- IndexedDB: mismo concepto que localStorage pero sin el techo de 5-10MB ----
 const DB_NAME = 'proyecto-yo-db';

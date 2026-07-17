@@ -1,5 +1,5 @@
 import	React,	{	useState,	useEffect	}	from	'react';
-import	{	X,	Save,	Key,	Sliders,	Palette,	Image	as	ImageIcon,	Check,	Trash2, Wallet	}	from	'lucide-react';
+import	{	X,	Save,	Key,	Sliders,	Palette,	Image	as	ImageIcon,	Check,	Trash2, Wallet, Sun, Moon	}	from	'lucide-react';
 import	{	motion	}	from	'framer-motion';
 import	{	useApp	}	from	'../context/AppContext';
 import	AvatarPicker	from	'./AvatarPicker';
@@ -55,7 +55,9 @@ export default function SettingsModal({ onClose }) {
     lang,
     userProfile,
     saveProfile,
-    saveLanguage
+    saveLanguage,
+    uiPrefs,
+    saveThemeMode,
   } = useApp();
   const [toneInput, setToneInput] = useState(userProfile.roleTone || '');
   const [toneSuggestions, setToneSuggestions] = useState([]);
@@ -309,6 +311,30 @@ export default function SettingsModal({ onClose }) {
 														>
 																←	{t('settings.back')}
 														</button>
+								{/* Interruptor Claro / Oscuro */}
+								<div className='border border-white/10 rounded-xl p-3 mt-3'>
+									<h3 className='flex items-center gap-2 text-sm font-semibold text-white mb-1'>
+										<Sun size={14} className='text-accent' />
+										{t('appearance.brightnessTitle')}
+									</h3>
+									<p className='text-xs text-gray-500 mb-3'>
+										{t('appearance.brightnessSubtitle')}
+									</p>
+									<div className='grid grid-cols-2 gap-2'>
+										<button
+											onClick={() => saveThemeMode('dark')}
+											className={`flex items-center justify-center gap-2 py-2.5 rounded-xl border text-sm transition-all ${(uiPrefs.themeMode || 'dark') === 'dark' ? 'border-white/60 bg-white/5 text-white' : 'border-white/10 text-gray-400 hover:border-white/30'}`}
+										>
+											<Moon size={14} /> {t('appearance.dark')}
+										</button>
+										<button
+											onClick={() => saveThemeMode('light')}
+											className={`flex items-center justify-center gap-2 py-2.5 rounded-xl border text-sm transition-all ${uiPrefs.themeMode === 'light' ? 'border-accent bg-accent/10 text-white' : 'border-white/10 text-gray-400 hover:border-white/30'}`}
+										>
+											<Sun size={14} /> {t('appearance.light')}
+										</button>
+									</div>
+								</div>
 														{/*	Selector	de	Theme	(color)	*/}
 														<div	className='border	border-white/10	rounded-xl	p-3	mt-3'>
 																<h3	className='flex	items-center	gap-2	text-sm	font-semibold	text-white	mb-1'>
@@ -811,4 +837,3 @@ export default function SettingsModal({ onClose }) {
     </div>
   );
 }
-

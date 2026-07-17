@@ -31,6 +31,56 @@
   /*	Fondo	de	pantalla	de	la	app	(imagen).	Vacío	=	sin	imagen,	solo	color.	*/
     --app-wallpaper-image:	none;
 }
+
+/* ==========================================================================
+   MODO CLARO
+   Se activa poniendo data-theme="light" en <html> (ver AppContext.jsx).
+   Redefine las variables de color base (fondo más claro, tarjetas casi
+   blancas) y además sobrescribe las clases de Tailwind ya usadas en toda la
+   app (text-white, border-white/10, etc.) para que el texto/bordes se vean
+   bien sobre un fondo claro, sin tener que tocar cada componente uno a uno.
+   ========================================================================== */
+[data-theme="light"] {
+  --app-bg-h: 250;   --app-bg-s: 30%;  --app-bg-l: 96%;
+  --card-bg-h: 240;  --card-bg-s: 20%; --card-bg-l: 100%;
+  --msgai-h: 240;    --msgai-s: 15%;   --msgai-l: 93%;
+}
+
+/* Texto principal (antes blanco sobre fondo oscuro) */
+[data-theme="light"] .text-white { color: #211f2e; }
+[data-theme="light"] .hover\:text-white:hover { color: #211f2e; }
+[data-theme="light"] .text-gray-100,
+[data-theme="light"] .text-gray-200,
+[data-theme="light"] .text-gray-300 { color: #3a3846; }
+[data-theme="light"] .text-gray-400,
+[data-theme="light"] .text-gray-500 { color: #6e6b7a; }
+[data-theme="light"] .text-gray-600,
+[data-theme="light"] .text-gray-700 { color: #a8a5b3; }
+
+/* Burbuja de mensaje de la IA: pasa a tener texto oscuro sobre fondo claro */
+[data-theme="light"] .bg-msg-ai { color: #2a2836; }
+
+/* Bordes y fondos translúcidos pensados para un fondo oscuro */
+[data-theme="light"] .border-white\/5,
+[data-theme="light"] .border-white\/10,
+[data-theme="light"] .border-white\/20,
+[data-theme="light"] .border-white\/30,
+[data-theme="light"] .border-white\/60 { border-color: rgba(0, 0, 0, 0.12); }
+
+[data-theme="light"] .bg-white\/5,
+[data-theme="light"] .bg-white\/10 { background-color: rgba(0, 0, 0, 0.04); }
+
+[data-theme="light"] .hover\:bg-white\/5:hover,
+[data-theme="light"] .hover\:bg-white\/10:hover { background-color: rgba(0, 0, 0, 0.06); }
+
+/* Fondo exterior (letterbox en desktop) y toggle desactivado */
+[data-theme="light"] .bg-gray-950 { background-color: #e4e2ea; }
+[data-theme="light"] .bg-gray-700 { background-color: #d5d2dc; }
+
+/* Inputs/textareas con fondo oscuro fijo (Ajustes, edición de mensajes) */
+[data-theme="light"] .bg-app-bg { background-color: hsl(var(--app-bg-h) var(--app-bg-s) var(--app-bg-l)); }
+[data-theme="light"] .bg-black\/20 { background-color: rgba(0, 0, 0, 0.06); }
+
 /*	Capa	de	fondo	de	la	app	—	se	pinta	detrás	de	#root	cuando	hay	wallpaper	*/
   .app-wallpaper-layer	{
     position:	fixed;

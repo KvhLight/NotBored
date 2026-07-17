@@ -15,6 +15,7 @@ export function AppProvider({ children }) {
 
   const	[uiPrefs,	setUiPrefs]	=	useState({
 		themeHue:	THEME_BASE_HUE,
+		themeMode:	'dark', // 'dark' | 'light'
 		appWallpaper:	null,
 		chatWallpapers:	{},
 	});
@@ -24,6 +25,13 @@ export function AppProvider({ children }) {
     window.electronAPI.settings.get().then(s => {
       if (s?.userProfile) setUserProfile(s.userProfile);
       if (s?.language) setLang(s.language);
+    });
+    window.electronAPI.uiPrefs.get().then(prefs => {
+      if (!prefs) return;
+      setUiPrefs(prev => ({ ...prev, ...prefs }));
+      applyThemeToDOM(prefs.themeHue);
+      applyWallpaperToDOM(prefs.appWallpaper);
+      applyThemeModeToDOM(prefs.themeMode);
     });
   }, [setLang]);
 
@@ -36,6 +44,9 @@ export function AppProvider({ children }) {
 			'--app-wallpaper-image',
 			wallpaperDataUri	?	`url(${wallpaperDataUri})`	:	'none'
 		);
+	}
+	function applyThemeModeToDOM(mode) {
+		document.documentElement.setAttribute('data-theme', mode === 'light' ? 'light' : 'dark');
 	}
 
   async function saveProfile(updates) {
@@ -53,6 +64,12 @@ export function AppProvider({ children }) {
 		setUiPrefs(prev	=>	({	...prev,	themeHue:	hue	}));
 		applyThemeToDOM(hue);
 		await	window.electronAPI.uiPrefs.update({	themeHue:	hue	});
+	}
+
+  async function saveThemeMode(mode) {
+		setUiPrefs(prev => ({ ...prev, themeMode: mode }));
+		applyThemeModeToDOM(mode);
+		await window.electronAPI.uiPrefs.update({ themeMode: mode });
 	}
 
   async	function	saveAppWallpaper(dataUriOrNull)	{
@@ -106,6 +123,7 @@ export function AppProvider({ children }) {
 			getUserContextBlock,
 			uiPrefs,
 			saveThemeHue,
+			saveThemeMode,
 			saveAppWallpaper,
 			saveChatWallpaper,
 			getChatWallpaper,
