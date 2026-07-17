@@ -32,29 +32,83 @@ const DEFAULT_SETTINGS = {
 };
 const DEFAULT_UI_PREFS = { themeHue: 262, appWallpaper: null, chatWallpapers: {} };
 
-function load(key, fallback) {
+// ---- IndexedDB: mismo concepto que localStorage pero sin el techo de 5-10MB ----
+const DB_NAME = 'proyecto-yo-db';
+const STORE_NAME = 'kv';
+let dbPromise = null;
+
+function openDB() {
+  if (dbPromise) return dbPromise;
+  dbPromise = new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, 1);
+    req.onupgradeneeded = () => {
+      if (!req.result.objectStoreNames.contains(STORE_NAME)) {
+        req.result.createObjectStore(STORE_NAME);
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+  return dbPromise;
+}
+
+async function load(key, fallback) {
   try {
-    const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : fallback;
+    const db = await openDB();
+    const value = await new Promise((resolve, reject) => {
+      const req = db.transaction(STORE_NAME, 'readonly').objectStore(STORE_NAME).get(key);
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+    return value === undefined ? fallback : value;
   } catch {
     return fallback;
   }
 }
-function persist(key, value) {
-  localStorage.setItem(key, JSON.stringify(value));
+async function persist(key, value) {
+  const db = await openDB();
+  await new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    tx.objectStore(STORE_NAME).put(value, key);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+// Migración automática y silenciosa: si hay datos antiguos en localStorage
+// (versiones previas de la app) y todavía no se han migrado a IndexedDB,
+// se copian una vez. No borra localStorage, por si algo saliera mal.
+let migrationDone = false;
+async function migrateFromLocalStorageIfNeeded() {
+  if (migrationDone) return;
+  migrationDone = true;
+  try {
+    const alreadyMigrated = await load('__migratedFromLocalStorage', false);
+    if (alreadyMigrated) return;
+    for (const key of ['characters', 'conversations', 'settings', 'uiPreferences']) {
+      const raw = localStorage.getItem(key);
+      if (raw) {
+        try { await persist(key, JSON.parse(raw)); } catch { /* dato corrupto, se ignora */ }
+      }
+    }
+    await persist('__migratedFromLocalStorage', true);
+  } catch {
+    // si algo falla aquí, simplemente se seguirá usando IndexedDB desde cero
+  }
 }
 
 /* ==========================================================================
    CHARACTERS
    ========================================================================== */
-function getAllCharacters() {
+async function getAllCharacters() {
+  await migrateFromLocalStorageIfNeeded();
   return load('characters', []);
 }
-function getCharacterById(id) {
-  return getAllCharacters().find(c => c.id === id) || null;
+async function getCharacterById(id) {
+  return (await getAllCharacters()).find(c => c.id === id) || null;
 }
-function createCharacter(data) {
-  const chars = getAllCharacters();
+async function createCharacter(data) {
+  const chars = await getAllCharacters();
   const newChar = {
     id: uuid(),
     name: data.name || 'Sin nombre',
@@ -71,36 +125,39 @@ function createCharacter(data) {
     updatedAt: Date.now(),
   };
   chars.push(newChar);
-  persist('characters', chars);
+  await persist('characters', chars);
   return newChar;
 }
-function updateCharacter(id, updates) {
-  const chars = getAllCharacters();
+async function updateCharacter(id, updates) {
+  const chars = await getAllCharacters();
   const idx = chars.findIndex(c => c.id === id);
   if (idx === -1) throw new Error(`Character ${id} not found`);
   chars[idx] = { ...chars[idx], ...updates, updatedAt: Date.now() };
-  persist('characters', chars);
+  await persist('characters', chars);
   return chars[idx];
 }
-function deleteCharacter(id) {
-  persist('characters', getAllCharacters().filter(c => c.id !== id));
-  persist('conversations', getAllConversations().filter(c => c.characterId !== id));
+async function deleteCharacter(id) {
+  const chars = await getAllCharacters();
+  await persist('characters', chars.filter(c => c.id !== id));
+  const convs = await getAllConversations();
+  await persist('conversations', convs.filter(c => c.characterId !== id));
   return true;
 }
 
 /* ==========================================================================
    CONVERSATIONS
    ========================================================================== */
-function getAllConversations() {
+async function getAllConversations() {
+  await migrateFromLocalStorageIfNeeded();
   return load('conversations', []);
 }
-function getConversationsByCharacter(characterId) {
-  return getAllConversations()
+async function getConversationsByCharacter(characterId) {
+  return (await getAllConversations())
     .filter(c => c.characterId === characterId)
     .sort((a, b) => b.lastActivity - a.lastActivity);
 }
-function createConversation(characterId) {
-  const convs = getAllConversations();
+async function createConversation(characterId) {
+  const convs = await getAllConversations();
   const newConv = {
     id: uuid(),
     characterId,
@@ -110,11 +167,11 @@ function createConversation(characterId) {
     lastActivity: Date.now(),
   };
   convs.push(newConv);
-  persist('conversations', convs);
+  await persist('conversations', convs);
   return newConv;
 }
-function appendMessage(conversationId, message) {
-  const convs = getAllConversations();
+async function appendMessage(conversationId, message) {
+  const convs = await getAllConversations();
   const idx = convs.findIndex(c => c.id === conversationId);
   if (idx === -1) throw new Error('Conversation not found');
   const newMsg = {
@@ -128,27 +185,29 @@ function appendMessage(conversationId, message) {
   if (message.role === 'user' && convs[idx].title === 'New Conversation') {
     convs[idx].title = message.content.slice(0, 40) + '...';
   }
-  persist('conversations', convs);
+  await persist('conversations', convs);
   return newMsg;
 }
-function deleteConversation(id) {
-  persist('conversations', getAllConversations().filter(c => c.id !== id));
+async function deleteConversation(id) {
+  const convs = await getAllConversations();
+  await persist('conversations', convs.filter(c => c.id !== id));
   return true;
 }
-function renameConversation(id, newTitle) {
-  const convs = getAllConversations();
+async function renameConversation(id, newTitle) {
+  const convs = await getAllConversations();
   const idx = convs.findIndex(c => c.id === id);
   if (idx === -1) throw new Error('Conversation not found');
   convs[idx].title = newTitle;
-  persist('conversations', convs);
+  await persist('conversations', convs);
   return convs[idx];
 }
 
 /* ==========================================================================
    SETTINGS / UI PREFERENCES
    ========================================================================== */
-function getSettings() {
-  const s = { ...DEFAULT_SETTINGS, ...load('settings', {}) };
+async function getSettings() {
+  await migrateFromLocalStorageIfNeeded();
+  const s = { ...DEFAULT_SETTINGS, ...(await load('settings', {})) };
   s.apiKeys = { ...s.apiKeys };
   // Migración: si hay una key legacy suelta y el proveedor activo aún no tiene
   // su propia entrada en apiKeys, la copiamos (así no pierdes la key que ya tenías).
@@ -157,20 +216,22 @@ function getSettings() {
   }
   return s;
 }
-function updateSettings(updates) {
-  persist('settings', { ...getSettings(), ...updates });
+async function updateSettings(updates) {
+  const current = await getSettings();
+  await persist('settings', { ...current, ...updates });
   return getSettings();
 }
-function getUiPreferences() {
-  return { ...DEFAULT_UI_PREFS, ...load('uiPreferences', {}) };
+async function getUiPreferences() {
+  await migrateFromLocalStorageIfNeeded();
+  return { ...DEFAULT_UI_PREFS, ...(await load('uiPreferences', {})) };
 }
-function updateUiPreferences(updates) {
-  const merged = { ...getUiPreferences(), ...updates };
-  persist('uiPreferences', merged);
+async function updateUiPreferences(updates) {
+  const merged = { ...(await getUiPreferences()), ...updates };
+  await persist('uiPreferences', merged);
   return merged;
 }
-function setChatWallpaper(characterId, value) {
-  const current = getUiPreferences();
+async function setChatWallpaper(characterId, value) {
+  const current = await getUiPreferences();
   const chatWallpapers = { ...current.chatWallpapers };
   if (value === null) delete chatWallpapers[characterId];
   else chatWallpapers[characterId] = value;
@@ -178,6 +239,7 @@ function setChatWallpaper(characterId, value) {
 }
 
 /* ==========================================================================
+
    IA — DeepSeek (llamada directa desde el navegador con fetch + streaming)
    ========================================================================== */
 function estimateTokens(text) {
@@ -284,7 +346,7 @@ async function getOllamaModels() {
 }
 
 async function sendMessage({ character, history, userMessage }) {
-  const settings = getSettings();
+  const settings = await getSettings();
   const { baseURL, apiKey, meta, providerId } = getProviderConfig(settings);
 
   if (meta.requiresApiKey && !apiKey) {
@@ -397,7 +459,7 @@ async function sendMessage({ character, history, userMessage }) {
    FORGE — generación automática de personajes
    ========================================================================== */
 async function forgeGenerateCharacter(idea) {
-  const settings = getSettings();
+  const settings = await getSettings();
   const { baseURL, apiKey, meta, providerId } = getProviderConfig(settings);
   if (meta.requiresApiKey && !apiKey) {
     return { success: false, error: `Falta la API Key de ${meta.label}. Configúrala en Ajustes.` };
@@ -546,11 +608,12 @@ const BACKUP_KEYS = ['characters', 'conversations', 'settings', 'uiPreferences']
 
 async function exportAllData() {
   try {
+    const dataEntries = await Promise.all(BACKUP_KEYS.map(async k => [k, await load(k, null)]));
     const payload = {
       app: 'proyecto-yo',
       backupVersion: 1,
       exportedAt: new Date().toISOString(),
-      data: Object.fromEntries(BACKUP_KEYS.map(k => [k, load(k, null)])),
+      data: Object.fromEntries(dataEntries),
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -596,7 +659,7 @@ async function importAllData() {
     }
     for (const key of BACKUP_KEYS) {
       if (parsed.data[key] !== undefined && parsed.data[key] !== null) {
-        persist(key, parsed.data[key]);
+        await persist(key, parsed.data[key]);
       }
     }
     return { success: true };
