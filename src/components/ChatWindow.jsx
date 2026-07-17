@@ -15,6 +15,7 @@ export	default	function	ChatWindow({	character,	conversation,	onBack,	onNewChat,
 		const	{	t,	getChatWallpaper,	saveChatWallpaper	}	=	useApp();
 		const	bottomRef	=	useRef(null);
 		const	inputRef	=	useRef(null);
+		const	pendingAiMsgId	=	useRef(null);
 		const	convId	=	conversation.id;
 		const	chatWallpaper	=	getChatWallpaper(character.id);
   const [maxContextTokens, setMaxContextTokens] = useState(4000);
@@ -58,23 +59,40 @@ export	default	function	ChatWindow({	character,	conversation,	onBack,	onNewChat,
 
   // Configurar listeners de streaming al montar
   useEffect(() => {
+    let chunkCount = 0;
+
     window.electronAPI.ai.onChunk(chunk => {
-      setStreamBuffer(prev => prev + chunk);
+      setStreamBuffer(prev => {
+        const next = prev + chunk;
+        // Guardado progresivo: cada pocos fragmentos (no en cada uno, para no
+        // saturar IndexedDB) persistimos lo que llevamos. Así, si la app se
+        // suspende en segundo plano a mitad de la respuesta, no se pierde
+        // todo — como mínimo queda lo que ya había llegado hasta ese punto.
+        chunkCount++;
+        if (pendingAiMsgId.current && chunkCount % 8 === 0) {
+          window.electronAPI.conversations.patchMessage(convId, pendingAiMsgId.current, { content: next });
+        }
+        return next;
+      });
     });
 
     window.electronAPI.ai.onDone(async () => {
       setStreamBuffer(prev => {
-        // Guardar mensaje completo al terminar el stream
         const fullContent = prev;
-        const aiMsg = { role: 'assistant', content: fullContent };
-        
+        const msgId = pendingAiMsgId.current;
+
         setMessages(m => [...m, {
-          ...aiMsg, 
-          id: Date.now().toString(), 
-          timestamp: Date.now()
+          id: msgId,
+          role: 'assistant',
+          content: fullContent,
+          timestamp: Date.now(),
+          pending: false,
         }]);
-        
-        window.electronAPI.conversations.appendMessage(convId, aiMsg);
+
+        if (msgId) {
+          window.electronAPI.conversations.patchMessage(convId, msgId, { content: fullContent, pending: false });
+        }
+        pendingAiMsgId.current = null;
         return '';
       });
       setIsStreaming(false);
@@ -84,6 +102,7 @@ export	default	function	ChatWindow({	character,	conversation,	onBack,	onNewChat,
       setError(errMsg);
       setIsStreaming(false);
       setStreamBuffer('');
+      pendingAiMsgId.current = null;
     });
 
     return () => window.electronAPI.ai.removeListeners();
@@ -118,6 +137,15 @@ export	default	function	ChatWindow({	character,	conversation,	onBack,	onNewChat,
         text.slice(0, 40)
       );
     }
+
+    // Reservamos ya el mensaje de la IA (vacío, marcado como 'pending') para
+    // poder ir guardando el contenido a medida que llega, no solo al final
+    const placeholder = await window.electronAPI.conversations.appendMessage(convId, {
+      role: 'assistant',
+      content: '',
+    });
+    await window.electronAPI.conversations.patchMessage(convId, placeholder.id, { pending: true });
+    pendingAiMsgId.current = placeholder.id;
    
     // Llamar a la API con el historial actualizado
     try {
@@ -235,9 +263,9 @@ export	default	function	ChatWindow({	character,	conversation,	onBack,	onNewChat,
             {!isStreaming && contextPercent > 0 && (
               <span
                 className={`opacity-60 ${contextPercent >= 90 ? 'text-yellow-400 opacity-100' : ''}`}
-                title='Cuánto del contexto de la conversación se está usando'
+                title={t('chat.contextUsageTooltip')}
               >
-                · {contextPercent}% contexto
+                · {contextPercent}% {t('chat.contextUsage')}
               </span>
             )}
           </p>
@@ -376,7 +404,7 @@ export	default	function	ChatWindow({	character,	conversation,	onBack,	onNewChat,
             onClick={isStreaming ? handleStop : sendMessage} 
             disabled={!isStreaming && !inputText.trim()}
             className='p-2.5 bg-accent rounded-xl text-white disabled:opacity-40 hover:bg-accent/80 transition-colors flex-shrink-0'
-            title={isStreaming ? 'Parar' : undefined}
+            title={isStreaming ? t('chat.stop') : undefined}
           >
             {isStreaming ? (
               <Square size={16} />

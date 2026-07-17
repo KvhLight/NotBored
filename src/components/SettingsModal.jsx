@@ -62,17 +62,6 @@ export default function SettingsModal({ onClose }) {
   const [toneInput, setToneInput] = useState(userProfile.roleTone || '');
   const [toneSuggestions, setToneSuggestions] = useState([]);
 
-  // Texto "primario" reactivo al modo claro/oscuro. Los textos de este modal
-  // usaban `text-white` fijo, por lo que en modo claro quedaban invisibles
-  // (blanco sobre fondo claro). El resto de la app usa colores que ya
-  // reaccionan al tema; aquí lo resolvemos localmente con el mismo dato
-  // (uiPrefs.themeMode) que ya tenemos disponible.
-  const isLightMode = uiPrefs.themeMode === 'light';
-  const textPrimary = isLightMode ? 'text-gray-900' : 'text-white';
-  const textSecondary =
-  isLightMode
-    ? 'text-gray-600'
-    : 'text-gray-400';
 
   // Cargar settings actuales al abrir
   useEffect(() => {
@@ -228,7 +217,7 @@ export default function SettingsModal({ onClose }) {
 
     // Validar API Key solo si el proveedor activo la necesita (ej. Ollama no)
     if (currentProviderMeta.requiresApiKey && currentKey.trim().length < 10) {
-      setError(t('ai.invalidKey', { provider: currentProviderMeta.label }));
+      setError(`API Key de ${currentProviderMeta.label} inválida o vacía.`);
       return;
     }
 
@@ -259,10 +248,10 @@ export default function SettingsModal({ onClose }) {
                         border-b border-white/10'>
           <div className='flex items-center gap-2'>
             <Sliders size={16} className='text-accent' />
-            <h2 className={`text-sm font-bold ${textPrimary}`}>{t('settings.title')}</h2>
+            <h2 className='text-sm font-bold text-white'>{t('settings.title')}</h2>
           </div>
           <button onClick={onClose}
-            className='p-1.5 rounded-lg hover:bg-white/10 textSecondary'>
+            className='p-1.5 rounded-lg hover:bg-white/10 text-gray-400'>
             <X size={16} />
           </button>
         </div>
@@ -275,21 +264,21 @@ export default function SettingsModal({ onClose }) {
                 onClick={() => setSection('profile')}
                 className='w-full flex items-center justify-between p-4 rounded-xl bg-card-bg border border-white/10 hover:bg-white/5'
               >
-                <span className={textPrimary}>👤 {t('settings.profile')}</span>
+                <span>👤 {t('settings.profile')}</span>
                 <span>›</span>
               </button>
               <button
 		  					onClick={()	=>	setSection('appearance')}
 								className='w-full flex items-center justify-between p-4 rounded-xl bg-card-bg border border-white/10 hover:bg white/5'
 							>
-	  						<span className={textPrimary}>	{t('settings.appearance')}</span>
+	  						<span>	{t('settings.appearance')}</span>
 								<span>›</span>
   						</button>
               <button
                 onClick={() => setSection('language')}
                 className='w-full flex items-center justify-between p-4 rounded-xl bg-card-bg border border-white/10 hover:bg-white/5'
               >
-                <span className={textPrimary}>🌍 {t('settings.language')}</span>
+                <span>🌍 {t('settings.language')}</span>
                 <span>›</span>
               </button>
 
@@ -297,7 +286,7 @@ export default function SettingsModal({ onClose }) {
                 onClick={() => setSection('ai')}
                 className='w-full flex items-center justify-between p-4 rounded-xl bg-card-bg border border-white/10 hover:bg-white/5'
               >
-                <span className={textPrimary}>🤖 {t('settings.ai')}</span>
+                <span>🤖 {t('settings.ai')}</span>
                 <span>›</span>
               </button>
 
@@ -307,7 +296,7 @@ export default function SettingsModal({ onClose }) {
                   onClick={() => setSection('backup')}
                   className='w-full flex items-center justify-between p-4 rounded-xl bg-card-bg border border-white/10 hover:bg-white/5'
                 >
-                  <span className={textPrimary}>💾 {t('settings.backup')}</span>
+                  <span>💾 {t('settings.backup')}</span>
                   <span>›</span>
                 </button>
               )}
@@ -318,13 +307,13 @@ export default function SettingsModal({ onClose }) {
 												<>
 														<button
 																onClick={()	=>	setSection('main')}
-																className='text-sm	textSecondary	hover:text-white'
+																className='text-sm	text-gray-400	hover:text-white'
 														>
 																←	{t('settings.back')}
 														</button>
 								{/* Interruptor Claro / Oscuro */}
 								<div className='border border-white/10 rounded-xl p-3 mt-3'>
-									<h3 className={`flex items-center gap-2 text-sm font-semibold ${textPrimary} mb-1`}>
+									<h3 className='flex items-center gap-2 text-sm font-semibold text-white mb-1'>
 										<Sun size={14} className='text-accent' />
 										{t('appearance.brightnessTitle')}
 									</h3>
@@ -334,13 +323,13 @@ export default function SettingsModal({ onClose }) {
 									<div className='grid grid-cols-2 gap-2'>
 										<button
 											onClick={() => saveThemeMode('dark')}
-											className={`flex items-center justify-center gap-2 py-2.5 rounded-xl border text-sm transition-all ${(uiPrefs.themeMode || 'dark') === 'dark' ? `border-white/60 bg-white/5 ${textPrimary}` : 'border-white/10 textSecondary hover:border-white/30'}`}
+											className={`flex items-center justify-center gap-2 py-2.5 rounded-xl border text-sm transition-all ${(uiPrefs.themeMode || 'dark') === 'dark' ? 'border-white/60 bg-white/5 text-white' : 'border-white/10 text-gray-400 hover:border-white/30'}`}
 										>
 											<Moon size={14} /> {t('appearance.dark')}
 										</button>
 										<button
 											onClick={() => saveThemeMode('light')}
-											className={`flex items-center justify-center gap-2 py-2.5 rounded-xl border text-sm transition-all ${uiPrefs.themeMode === 'light' ? `border-accent bg-accent/10 ${textPrimary}` : 'border-white/10 textSecondary hover:border-white/30'}`}
+											className={`flex items-center justify-center gap-2 py-2.5 rounded-xl border text-sm transition-all ${uiPrefs.themeMode === 'light' ? 'border-accent bg-accent/10 text-white' : 'border-white/10 text-gray-400 hover:border-white/30'}`}
 										>
 											<Sun size={14} /> {t('appearance.light')}
 										</button>
@@ -348,7 +337,7 @@ export default function SettingsModal({ onClose }) {
 								</div>
 														{/*	Selector	de	Theme	(color)	*/}
 														<div	className='border	border-white/10	rounded-xl	p-3	mt-3'>
-																<h3	className={`flex	items-center	gap-2	text-sm	font-semibold	${textPrimary}	mb-1`}>
+																<h3	className='flex	items-center	gap-2	text-sm	font-semibold	text-white	mb-1'>
 																		<Palette	size={14}	className='text-accent'	/>
 																		{t('appearance.themeTitle')}
 																</h3>
@@ -372,7 +361,7 @@ export default function SettingsModal({ onClose }) {
 																								>
 																										{isActive	&&	<Check	size={14}	className='text-white'	/>}
 																								</span>
-																								<span	className='text-[10px]	textSecondary'>{preset.label}</span>
+																								<span	className='text-[10px]	text-gray-400'>{preset.label}</span>
 																						</button>
 																				);
 																		})}
@@ -403,7 +392,7 @@ export default function SettingsModal({ onClose }) {
 														</div>
 														{/*	Selector	de	fondo	de	pantalla	de	la	APP	*/}
 														<div className='border border-white/10 rounded-xl p-3 mt-3'>
-                        <h3 className={`flex items-center gap-2 text-sm font-semibold ${textPrimary} mb-1`}>
+                        <h3 className='flex items-center gap-2 text-sm font-semibold text-white mb-1'>
                         <ImageIcon size={14} className='text-accent' />
                         {t('appearance.wallpaperTitle')}
                         </h3>
@@ -442,7 +431,7 @@ export default function SettingsModal({ onClose }) {
                         {t('appearance.applyWallpaper')}
                         </button>
                         <button type='button' onClick={handleCancelWallpaperPreview}
-                        className='flex-1 bg-card-bg textSecondary text-xs font-semibold
+                        className='flex-1 bg-card-bg text-gray-400 text-xs font-semibold
                         py-2 rounded-xl border border-white/10
                         hover:bg-white/5 transition-colors'>
                         {t('appearance.cancelWallpaper')}
@@ -467,7 +456,7 @@ export default function SettingsModal({ onClose }) {
                         {appWallpaper && !wallpaperPreview && (
                         <button type='button' onClick={handleRemoveWallpaper}
                         title={t('appearance.removeWallpaper')}
-                        className='px-3 rounded-xl border border-white/10 textSecondary
+                        className='px-3 rounded-xl border border-white/10 text-gray-400
                         hover:text-red-400 hover:border-red-500/40
                         transition-colors'>
                         <Trash2 size={14} />
@@ -477,7 +466,7 @@ export default function SettingsModal({ onClose }) {
                         {previousWallpaper && !wallpaperPreview && (
                         <button type='button' onClick={handleRevertWallpaper}
                         title={t('appearance.revertWallpaper')}
-                        className='px-3 rounded-xl border border-white/10 textSecondary
+                        className='px-3 rounded-xl border border-white/10 text-gray-400
                         hover:text-accent-2 hover:border-accent-2/40
                         transition-colors'>
                         <RotateCcw size={14} />
@@ -494,12 +483,12 @@ export default function SettingsModal({ onClose }) {
                         flex items-center justify-center p-4'>
                         <div className='bg-card-bg border border-white/10 rounded-2xl p-4
                         w-full max-w-xs'>
-                        <p className={`text-sm font-semibold ${textPrimary} mb-2`}>
+                        <p className='text-sm font-semibold text-white mb-2'>
                         {confirmTarget === 'remove'
                         ? t('appearance.confirmRemoveTitle')
                         : t('appearance.confirmRevertTitle')}
                         </p>
-                        <p className='text-xs textSecondary mb-4'>
+                        <p className='text-xs text-gray-400 mb-4'>
                         {confirmTarget === 'remove'
                         ? t('appearance.confirmRemoveDesc')
                         : t('appearance.confirmRevertDesc')}
@@ -513,7 +502,7 @@ export default function SettingsModal({ onClose }) {
                         {t('appearance.confirmYes')}
                         </button>
                         <button onClick={handleCancelAction}
-                        className='flex-1 bg-card-bg textSecondary
+                        className='flex-1 bg-card-bg text-gray-400
                         border border-white/10 rounded-xl py-2
                         text-xs font-semibold hover:bg-white/5
                         transition-colors'>
@@ -531,7 +520,7 @@ export default function SettingsModal({ onClose }) {
             <>
             <button
               onClick={() => setSection('main')}
-              className={`text-sm textSecondary ${isLightMode ? 'hover:text-gray-900' : 'hover:text-white'}`}
+              className='text-sm text-gray-400 hover:text-white'
             >
               ← {t('settings.back')}
             </button> 
@@ -539,7 +528,7 @@ export default function SettingsModal({ onClose }) {
               <p className='text-xs text-gray-500 mb-3'>
                   {t('profile.autoSave')}
               </p>
-              <h3 className={`flex items-center gap-2 text-sm font-semibold ${textPrimary} mb-3`}>
+              <h3 className='flex items-center gap-2 text-sm font-semibold text-white mb-3'>
                 {userProfile.avatar?.startsWith('data:') ? (
                   <img
                     src={userProfile.avatar}
@@ -560,8 +549,8 @@ export default function SettingsModal({ onClose }) {
               <input
                 value={userProfile.alias}
                 onChange={e => saveProfile({ alias: e.target.value })}
-                placeholder={t('profile.namePlaceholder')}
-                className={`w-full bg-app-bg ${textPrimary} text-sm rounded-xl px-3 py-2.5 border border-white/10 focus:border-accent/60 outline-none`}
+                placeholder={t('profile.namePlaceHolder')}
+                className='w-full bg-app-bg text-white text-sm rounded-xl px-3 py-2.5 border border-white/10 focus:border-accent/60 outline-none'
               />
             </div>
             <AvatarPicker
@@ -602,7 +591,7 @@ export default function SettingsModal({ onClose }) {
                   }
                 }}
                 placeholder={t('profile.tonePlaceholder')}
-                className={`w-full bg-app-bg ${textPrimary} text-sm rounded-xl px-3 py-2.5 border border-white/10 focus:border-accent/60 outline-none`}
+                className='w-full bg-app-bg text-white text-sm rounded-xl px-3 py-2.5 border border-white/10 focus:border-accent/60 outline-none'
               />
               {toneSuggestions.length > 0 && (
                 <div className='mt-2 bg-card-bg border border-white/10 rounded-xl overflow-hidden'>
@@ -631,7 +620,7 @@ export default function SettingsModal({ onClose }) {
             <>
               <button
                 onClick={() => setSection('main')}
-                className={`text-sm textSecondary ${isLightMode ? 'hover:text-gray-900' : 'hover:text-white'}`}
+                className='text-sm text-gray-400 hover:text-white'
               >
                 ← {t('settings.back')}
               </button>
@@ -654,7 +643,7 @@ export default function SettingsModal({ onClose }) {
                     setModel(meta.defaultModel || meta.models[0] || '');
                   }
                 }}
-                className={`w-full bg-app-bg ${textPrimary} text-sm rounded-xl px-3 py-2.5 border border-white/10`}
+                className='w-full bg-app-bg text-white text-sm rounded-xl px-3 py-2.5 border border-white/10'
               >
                 {Object.entries(PROVIDERS).map(([id, meta]) => (
                   <option key={id} value={id}>{meta.label}</option>
@@ -671,7 +660,7 @@ export default function SettingsModal({ onClose }) {
                     e.target.value
                   )
                 }
-                className={`w-full bg-app-bg ${textPrimary} text-sm rounded-xl px-3 py-2.5 border border-white/10`}
+                className='w-full bg-app-bg text-white text-sm rounded-xl px-3 py-2.5 border border-white/10'
               >
                 {(PROVIDERS[provider].models === null ? availableModels : PROVIDERS[provider].models)
                   .map(modelName => (
@@ -691,9 +680,9 @@ export default function SettingsModal({ onClose }) {
                     value={apiKeys[provider] || ''}
                     onChange={e => setApiKeys(prev => ({ ...prev, [provider]: e.target.value }))}
                     placeholder={PROVIDERS[provider].keyPlaceholder || 'sk-...'}
-                    className={`w-full bg-app-bg ${textPrimary} text-sm rounded-xl px-3 py-2.5
+                    className='w-full bg-app-bg text-white text-sm rounded-xl px-3 py-2.5
                               border border-white/10 focus:border-accent/60 outline-none
-                              placeholder-gray-700 font-mono`}
+                              placeholder-gray-700 font-mono'
                   />
                   <p className='text-xs text-gray-600 mt-1'>
                     {t('ai.hint')}
@@ -759,12 +748,12 @@ export default function SettingsModal({ onClose }) {
             <>
               <button
                 onClick={() => setSection('main')}
-                className='text-sm textSecondary hover:text-white mb-4'
+                className='text-sm text-gray-400 hover:text-white mb-4'
               >
                 ← {t('settings.back')}
               </button>
 
-              <h3 className={`text-lg font-semibold ${textPrimary} mb-4`}>
+              <h3 className='text-lg font-semibold text-white mb-4'>
                 {t('settings.language')}
               </h3>
 
@@ -778,7 +767,7 @@ export default function SettingsModal({ onClose }) {
                       : 'border-white/10 bg-card-bg hover:bg-white/5'
                   }`}
                 >
-                  <span className={textPrimary}>🇺🇸 English</span>
+                  <span>🇺🇸 English</span>
                   {lang === 'en' && <span>✓</span>}
                 </button>
 
@@ -790,7 +779,7 @@ export default function SettingsModal({ onClose }) {
                       : 'border-white/10 bg-card-bg hover:bg-white/5'
                   }`}
                 >
-                  <span className={textPrimary}>🇪🇸 Español</span>
+                  <span>🇪🇸 Español</span>
                   {lang === 'es' && <span>✓</span>}
                 </button>
                 
@@ -802,12 +791,12 @@ export default function SettingsModal({ onClose }) {
             <>
               <button
                 onClick={() => setSection('main')}
-                className='text-sm textSecondary hover:text-white mb-4'
+                className='text-sm text-gray-400 hover:text-white mb-4'
               >
                 ← {t('settings.back')}
               </button>
 
-              <h3 className={`text-lg font-semibold ${textPrimary} mb-2`}>
+              <h3 className='text-lg font-semibold text-white mb-2'>
                 💾 {t('settings.backup')}
               </h3>
               <p className='text-xs text-gray-500 mb-4'>
@@ -825,8 +814,8 @@ export default function SettingsModal({ onClose }) {
 
                 <button
                   onClick={handleImportBackup}
-                  className={`w-full flex items-center justify-center gap-2 p-4 rounded-xl
-                            border border-white/10 bg-card-bg hover:bg-white/5 transition-colors ${textPrimary}`}
+                  className='w-full flex items-center justify-center gap-2 p-4 rounded-xl
+                            border border-white/10 bg-card-bg hover:bg-white/5 transition-colors'
                 >
                   📥 {t('settings.importBackup')}
                 </button>
@@ -845,3 +834,4 @@ export default function SettingsModal({ onClose }) {
     </div>
   );
 }
+

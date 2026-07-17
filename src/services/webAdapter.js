@@ -220,6 +220,19 @@ async function editMessage(conversationId, messageId, newContent) {
   await persist('conversations', convs);
   return convs[idx].messages[msgIdx];
 }
+// Actualización interna (sin marcar 'edited') — se usa para ir guardando la
+// respuesta de la IA mientras llega en streaming, y así no perderla entera
+// si la app se queda suspendida en segundo plano a mitad de la generación.
+async function patchMessage(conversationId, messageId, patch) {
+  const convs = await getAllConversations();
+  const idx = convs.findIndex(c => c.id === conversationId);
+  if (idx === -1) return null;
+  const msgIdx = convs[idx].messages.findIndex(m => m.id === messageId);
+  if (msgIdx === -1) return null;
+  convs[idx].messages[msgIdx] = { ...convs[idx].messages[msgIdx], ...patch };
+  await persist('conversations', convs);
+  return convs[idx].messages[msgIdx];
+}
 
 /* ==========================================================================
    SETTINGS / UI PREFERENCES
@@ -723,6 +736,7 @@ const webAdapter = {
     rename: async (id, title) => renameConversation(id, title),
     deleteMessage: async (convId, msgId) => deleteMessage(convId, msgId),
     editMessage: async (convId, msgId, content) => editMessage(convId, msgId, content),
+    patchMessage: async (convId, msgId, patch) => patchMessage(convId, msgId, patch),
   },
   ai: { sendMessage, onChunk, onDone, onError, removeListeners, stopGeneration },
   settings: {

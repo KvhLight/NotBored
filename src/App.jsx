@@ -169,7 +169,7 @@ export default function App() {
         {isOffline && (
           <div className='absolute top-0 left-0 right-0 z-50 bg-yellow-600/90 backdrop-blur-sm
                           text-white text-xs text-center py-2 px-3'>
-            📡 Sin conexión a internet — algunas funciones (como chatear) no estarán disponibles hasta que vuelvas a tener señal.
+            {t('app.offlineBanner')}
           </div>
         )}
 
@@ -188,13 +188,13 @@ export default function App() {
                 <div className='absolute top-12 left-3 right-3 z-20 flex items-center gap-2
                                 bg-accent/15 border border-accent/30 rounded-xl px-3 py-2.5 backdrop-blur-sm'>
                   <span className='text-sm flex-1 text-white'>
-                    🤖 Configura tu IA para empezar a chatear
+                    {t('app.aiBannerText')}
                   </span>
                   <button
                     onClick={() => { setShowSettings(true); setShowAiBanner(false); }}
                     className='text-xs font-semibold bg-accent text-white px-2.5 py-1.5 rounded-lg hover:bg-accent/80'
                   >
-                    Configurar
+                    {t('app.aiBannerCta')}
                   </button>
                   <button
                     onClick={() => setShowAiBanner(false)}

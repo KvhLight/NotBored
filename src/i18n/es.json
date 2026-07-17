@@ -3,7 +3,10 @@
     "title": "DeepSeek Roleplay",
     "characters": "Personajes",
     "newChat": "Nuevo chat",
-    "settings": "Configuración"
+    "settings": "Configuración",
+    "aiBannerText": "🤖 Configura tu IA para empezar a chatear",
+    "aiBannerCta": "Configurar",
+    "offlineBanner": "📡 Sin conexión a internet — algunas funciones (como chatear) no estarán disponibles hasta que vuelvas a tener señal."
   },
   "chat": {
     "placeholder": "Habla con {{name}}...",
@@ -18,7 +21,15 @@
     "errorPrefix": "Error: ",
     "wallpaperTooltip":	"Fondo de pantalla del chat",
     "setWallpaper":	"Elegir imagen de fondo",
-    "removeWallpaper":	"Quitar fondo del chat"
+    "removeWallpaper":	"Quitar fondo del chat",
+    "contextUsage": "contexto",
+    "contextUsageTooltip": "Cuánto del contexto de la conversación se está usando",
+    "stop": "Parar"
+  },
+  "messageActions": {
+    "edit": "Editar",
+    "delete": "Borrar",
+    "regenerate": "Regenerar respuesta"
   },
   "character": {
     "new": "Nueva Lorecard",

@@ -46,6 +46,11 @@
   --msgai-h: 240;    --msgai-s: 15%;   --msgai-l: 93%;
 }
 
+/* El color de texto por defecto (heredado en cualquier elemento sin clase
+   explícita) estaba fijado en gris clarito pensado para fondo oscuro */
+[data-theme="light"] #root,
+[data-theme="light"] body { color: #211f2e; }
+
 /* Texto principal (antes blanco sobre fondo oscuro) */
 [data-theme="light"] .text-white { color: #211f2e; }
 [data-theme="light"] .hover\:text-white:hover { color: #211f2e; }

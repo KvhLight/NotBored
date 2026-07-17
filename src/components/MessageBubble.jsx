@@ -112,6 +112,12 @@ export default function MessageBubble({
             </p>
           )}
 
+          {message.pending && !isStreaming && (
+            <p className='text-xs mt-1 text-yellow-400/80'>
+              ⚠️ Respuesta interrumpida — puede estar incompleta
+            </p>
+          )}
+
           {/* Timestamp */}
           {message.timestamp && !editing && (
             <p className='text-xs mt-1 opacity-40 text-right'>
@@ -131,7 +137,7 @@ export default function MessageBubble({
               <button
                 onClick={() => { setEditing(true); setShowActions(false); }}
                 className='p-1.5 rounded-lg hover:bg-white/10 text-gray-500 hover:text-white'
-                title='Editar'
+                title={t('messageActions.edit')}
               >
                 <Pencil size={12} />
               </button>
@@ -140,7 +146,7 @@ export default function MessageBubble({
               <button
                 onClick={() => { onRegenerate(); setShowActions(false); }}
                 className='p-1.5 rounded-lg hover:bg-white/10 text-gray-500 hover:text-white'
-                title='Regenerar respuesta'
+                title={t('messageActions.regenerate')}
               >
                 <RotateCcw size={12} />
               </button>
@@ -149,7 +155,7 @@ export default function MessageBubble({
               <button
                 onClick={() => { onDelete(message.id); setShowActions(false); }}
                 className='p-1.5 rounded-lg hover:bg-white/10 text-gray-500 hover:text-red-400'
-                title='Borrar'
+                title={t('messageActions.delete')}
               >
                 <Trash2 size={12} />
               </button>
