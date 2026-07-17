@@ -29,7 +29,10 @@
   "messageActions": {
     "edit": "Edit",
     "delete": "Delete",
-    "regenerate": "Regenerate response"
+    "regenerate": "Regenerate response",
+    "copy": "Copy",
+    "copied": "Copied!",
+    "deleteFrom": "Delete from here (and after)"
   },
   "character": {
     "new": "New Lorecard",

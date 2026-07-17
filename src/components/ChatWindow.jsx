@@ -108,13 +108,32 @@ export	default	function	ChatWindow({	character,	conversation,	onBack,	onNewChat,
     return () => window.electronAPI.ai.removeListeners();
   }, [convId]);
 
+  // Helper común: reserva el mensaje de la IA (vacío, para ir guardándolo
+  // progresivamente) y le pide la respuesta. Lo usan sendMessage, regenerar,
+  // y la edición de un mensaje propio (que fuerza una respuesta nueva).
+  async function requestAiResponse(history, userMessage) {
+    setError(null);
+    setIsStreaming(true);
+
+    const placeholder = await window.electronAPI.conversations.appendMessage(convId, {
+      role: 'assistant',
+      content: '',
+    });
+    await window.electronAPI.conversations.patchMessage(convId, placeholder.id, { pending: true });
+    pendingAiMsgId.current = placeholder.id;
+
+    try {
+      await window.electronAPI.ai.sendMessage({ character, history, userMessage });
+    } catch (err) {
+      // El error llega por el listener onError, no aquí
+    }
+  }
+
   async function sendMessage() {
     const text = inputText.trim();
     if (!text || isStreaming) return;
 
-    setError(null);
     setInputText('');
-    setIsStreaming(true);
 
     // Agregar mensaje del usuario a la UI
     const userMsg = { 
@@ -138,25 +157,7 @@ export	default	function	ChatWindow({	character,	conversation,	onBack,	onNewChat,
       );
     }
 
-    // Reservamos ya el mensaje de la IA (vacío, marcado como 'pending') para
-    // poder ir guardando el contenido a medida que llega, no solo al final
-    const placeholder = await window.electronAPI.conversations.appendMessage(convId, {
-      role: 'assistant',
-      content: '',
-    });
-    await window.electronAPI.conversations.patchMessage(convId, placeholder.id, { pending: true });
-    pendingAiMsgId.current = placeholder.id;
-   
-    // Llamar a la API con el historial actualizado
-    try {
-      await window.electronAPI.ai.sendMessage({
-        character,
-        history: updatedMessages,
-        userMessage: text,
-      });
-    } catch (err) {
-      // El error llega por el listener onError, no aquí
-    }
+    await requestAiResponse(updatedMessages, text);
   }
 
   function handleKeyDown(e) {
@@ -175,11 +176,41 @@ export	default	function	ChatWindow({	character,	conversation,	onBack,	onNewChat,
     setMessages(m => m.filter(msg => msg.id !== messageId));
   }
 
+  // Borra un mensaje del usuario Y todo lo que vino después, dejando
+  // intacto lo anterior (distinto de borrar solo ese mensaje)
+  async function handleDeleteFromHere(messageId) {
+    const idx = messages.findIndex(m => m.id === messageId);
+    if (idx === -1) return;
+    const kept = messages.slice(0, idx);
+    await window.electronAPI.conversations.setMessages(convId, kept);
+    setMessages(kept);
+  }
+
   async function handleEditMessage(messageId, newContent) {
-    await window.electronAPI.conversations.editMessage?.(convId, messageId, newContent);
-    setMessages(m => m.map(msg =>
-      msg.id === messageId ? { ...msg, content: newContent, edited: true } : msg
-    ));
+    const idx = messages.findIndex(m => m.id === messageId);
+    if (idx === -1) return;
+    const msg = messages[idx];
+
+    if (msg.role === 'assistant') {
+      // Solo se actualiza el texto — el turno siguiente es del usuario,
+      // la IA no tiene que hacer nada más
+      await window.electronAPI.conversations.editMessage?.(convId, messageId, newContent);
+      setMessages(m => m.map(x =>
+        x.id === messageId ? { ...x, content: newContent, edited: true } : x
+      ));
+      return;
+    }
+
+    // Es un mensaje del usuario: se edita, se descarta todo lo que vino
+    // después (incluida la respuesta antigua de la IA a ese mensaje), y se
+    // pide una respuesta nueva basada en el contenido editado
+    if (isStreaming) return;
+    const editedMsg = { ...msg, content: newContent, edited: true };
+    const truncated = [...messages.slice(0, idx), editedMsg];
+    await window.electronAPI.conversations.setMessages(convId, truncated);
+    setMessages(truncated);
+
+    await requestAiResponse(truncated, newContent);
   }
 
   async function handleRegenerate() {
@@ -195,17 +226,7 @@ export	default	function	ChatWindow({	character,	conversation,	onBack,	onNewChat,
     const lastUserMsg = withoutLast[withoutLast.length - 1];
     if (!lastUserMsg || lastUserMsg.role !== 'user') return;
 
-    setError(null);
-    setIsStreaming(true);
-    try {
-      await window.electronAPI.ai.sendMessage({
-        character,
-        history: withoutLast,
-        userMessage: lastUserMsg.content,
-      });
-    } catch (err) {
-      // El error llega por el listener onError
-    }
+    await requestAiResponse(withoutLast, lastUserMsg.content);
   }
 
   async	function	handleSelectChatWallpaper()	{
@@ -342,7 +363,8 @@ export	default	function	ChatWindow({	character,	conversation,	onBack,	onNewChat,
               characterName={character.name}
               isLast={i === messages.length - 1}
               onDelete={handleDeleteMessage}
-              onEdit={msg.role === 'user' ? handleEditMessage : undefined}
+              onDeleteFrom={msg.role === 'user' ? handleDeleteFromHere : undefined}
+              onEdit={handleEditMessage}
               onRegenerate={msg.role === 'assistant' ? handleRegenerate : undefined}
             />
           ))}

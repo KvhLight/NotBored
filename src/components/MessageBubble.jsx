@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Pencil, Trash2, RotateCcw, Check, X } from 'lucide-react';
+import { Pencil, Trash2, RotateCcw, Check, X, Copy, Scissors } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
 
@@ -11,6 +11,7 @@ export default function MessageBubble({
   characterName,
   isLast,
   onDelete,
+  onDeleteFrom,
   onEdit,
   onRegenerate,
 }) {
@@ -19,6 +20,13 @@ export default function MessageBubble({
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(message.content);
   const [showActions, setShowActions] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  function handleCopy() {
+    navigator.clipboard?.writeText(message.content);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  }
 
   // Renderiza *texto* en cursiva (estilizado) para acciones de roleplay
   function renderContent(text) {
@@ -43,7 +51,7 @@ export default function MessageBubble({
     setEditing(false);
   }
 
-  const canShowActions = !isStreaming && !editing && (onDelete || onEdit || onRegenerate);
+  const canShowActions = !isStreaming && !editing && (onDelete || onDeleteFrom || onEdit || onRegenerate);
 
   return (
     <motion.div
@@ -133,7 +141,7 @@ export default function MessageBubble({
         {/* Acciones: aparecen al tocar la burbuja */}
         {showActions && canShowActions && (
           <div className='flex items-center gap-1 mt-1 px-1'>
-            {isUser && onEdit && (
+            {onEdit && (
               <button
                 onClick={() => { setEditing(true); setShowActions(false); }}
                 className='p-1.5 rounded-lg hover:bg-white/10 text-gray-500 hover:text-white'
@@ -151,6 +159,13 @@ export default function MessageBubble({
                 <RotateCcw size={12} />
               </button>
             )}
+            <button
+              onClick={() => { handleCopy(); }}
+              className='p-1.5 rounded-lg hover:bg-white/10 text-gray-500 hover:text-white'
+              title={copied ? t('messageActions.copied') : t('messageActions.copy')}
+            >
+              {copied ? <Check size={12} className='text-green-400' /> : <Copy size={12} />}
+            </button>
             {onDelete && (
               <button
                 onClick={() => { onDelete(message.id); setShowActions(false); }}
@@ -158,6 +173,15 @@ export default function MessageBubble({
                 title={t('messageActions.delete')}
               >
                 <Trash2 size={12} />
+              </button>
+            )}
+            {isUser && onDeleteFrom && (
+              <button
+                onClick={() => { onDeleteFrom(message.id); setShowActions(false); }}
+                className='p-1.5 rounded-lg hover:bg-white/10 text-gray-500 hover:text-red-400'
+                title={t('messageActions.deleteFrom')}
+              >
+                <Scissors size={12} />
               </button>
             )}
           </div>

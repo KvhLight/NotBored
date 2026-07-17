@@ -233,6 +233,18 @@ async function patchMessage(conversationId, messageId, patch) {
   await persist('conversations', convs);
   return convs[idx].messages[msgIdx];
 }
+// Reemplaza el array de mensajes completo — se usa para truncar la
+// conversación desde un punto concreto (borrar un mensaje y todo lo
+// posterior, o mantener solo hasta un mensaje editado).
+async function setConversationMessages(conversationId, newMessages) {
+  const convs = await getAllConversations();
+  const idx = convs.findIndex(c => c.id === conversationId);
+  if (idx === -1) throw new Error('Conversation not found');
+  convs[idx].messages = newMessages;
+  convs[idx].lastActivity = Date.now();
+  await persist('conversations', convs);
+  return convs[idx];
+}
 
 /* ==========================================================================
    SETTINGS / UI PREFERENCES
@@ -737,6 +749,7 @@ const webAdapter = {
     deleteMessage: async (convId, msgId) => deleteMessage(convId, msgId),
     editMessage: async (convId, msgId, content) => editMessage(convId, msgId, content),
     patchMessage: async (convId, msgId, patch) => patchMessage(convId, msgId, patch),
+    setMessages: async (convId, msgs) => setConversationMessages(convId, msgs),
   },
   ai: { sendMessage, onChunk, onDone, onError, removeListeners, stopGeneration },
   settings: {
