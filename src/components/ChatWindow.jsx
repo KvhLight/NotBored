@@ -1,5 +1,5 @@
 import	React,	{	useState,	useEffect,	useRef	}	from	'react';
-import	{	History,	ArrowLeft,	Plus,	Send,	Loader2,	Image	as	ImageIcon,	Trash2,	X	}	from	'lucide-react';
+import	{	History,	ArrowLeft,	Plus,	Send,	Loader2,	Image	as	ImageIcon,	Trash2,	X,	Square	}	from	'lucide-react';
 import	{	motion,	AnimatePresence	}	from	'framer-motion';
 import	MessageBubble	from	'./MessageBubble';
 import	{	useApp	}	from	'../context/AppContext';
@@ -123,6 +123,48 @@ export	default	function	ChatWindow({	character,	conversation,	onBack,	onNewChat,
     }
   }
 
+  function handleStop() {
+    window.electronAPI.ai.stopGeneration?.();
+  }
+
+  async function handleDeleteMessage(messageId) {
+    await window.electronAPI.conversations.deleteMessage?.(convId, messageId);
+    setMessages(m => m.filter(msg => msg.id !== messageId));
+  }
+
+  async function handleEditMessage(messageId, newContent) {
+    await window.electronAPI.conversations.editMessage?.(convId, messageId, newContent);
+    setMessages(m => m.map(msg =>
+      msg.id === messageId ? { ...msg, content: newContent, edited: true } : msg
+    ));
+  }
+
+  async function handleRegenerate() {
+    if (isStreaming) return;
+    const lastMsg = messages[messages.length - 1];
+    if (!lastMsg || lastMsg.role !== 'assistant') return;
+
+    // Quitar la última respuesta de la IA y volver a pedirla
+    await window.electronAPI.conversations.deleteMessage?.(convId, lastMsg.id);
+    const withoutLast = messages.slice(0, -1);
+    setMessages(withoutLast);
+
+    const lastUserMsg = withoutLast[withoutLast.length - 1];
+    if (!lastUserMsg || lastUserMsg.role !== 'user') return;
+
+    setError(null);
+    setIsStreaming(true);
+    try {
+      await window.electronAPI.ai.sendMessage({
+        character,
+        history: withoutLast,
+        userMessage: lastUserMsg.content,
+      });
+    } catch (err) {
+      // El error llega por el listener onError
+    }
+  }
+
   async	function	handleSelectChatWallpaper()	{
 		setWallpaperLoading(true);
 		try	{
@@ -241,12 +283,16 @@ export	default	function	ChatWindow({	character,	conversation,	onBack,	onNewChat,
       {/* Messages Area */}
       <div className='flex-1 overflow-y-auto px-4 py-4 space-y-3'>
         <AnimatePresence initial={false}>
-          {messages.map(msg => (
+          {messages.map((msg, i) => (
             <MessageBubble 
               key={msg.id} 
               message={msg}
               characterAvatar={character.avatar} 
               characterName={character.name}
+              isLast={i === messages.length - 1}
+              onDelete={handleDeleteMessage}
+              onEdit={msg.role === 'user' ? handleEditMessage : undefined}
+              onRegenerate={msg.role === 'assistant' ? handleRegenerate : undefined}
             />
           ))}
 
@@ -304,12 +350,13 @@ export	default	function	ChatWindow({	character,	conversation,	onBack,	onNewChat,
           />
           
           <button 
-            onClick={sendMessage} 
-            disabled={!inputText.trim() || isStreaming}
+            onClick={isStreaming ? handleStop : sendMessage} 
+            disabled={!isStreaming && !inputText.trim()}
             className='p-2.5 bg-accent rounded-xl text-white disabled:opacity-40 hover:bg-accent/80 transition-colors flex-shrink-0'
+            title={isStreaming ? 'Parar' : undefined}
           >
             {isStreaming ? (
-              <Loader2 size={16} className='animate-spin' />
+              <Square size={16} />
             ) : (
               <Send size={16} />
             )}

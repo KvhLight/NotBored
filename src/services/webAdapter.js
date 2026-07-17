@@ -201,6 +201,25 @@ async function renameConversation(id, newTitle) {
   await persist('conversations', convs);
   return convs[idx];
 }
+async function deleteMessage(conversationId, messageId) {
+  const convs = await getAllConversations();
+  const idx = convs.findIndex(c => c.id === conversationId);
+  if (idx === -1) throw new Error('Conversation not found');
+  convs[idx].messages = convs[idx].messages.filter(m => m.id !== messageId);
+  await persist('conversations', convs);
+  return convs[idx];
+}
+async function editMessage(conversationId, messageId, newContent) {
+  const convs = await getAllConversations();
+  const idx = convs.findIndex(c => c.id === conversationId);
+  if (idx === -1) throw new Error('Conversation not found');
+  const msgIdx = convs[idx].messages.findIndex(m => m.id === messageId);
+  if (msgIdx === -1) throw new Error('Message not found');
+  convs[idx].messages[msgIdx].content = newContent;
+  convs[idx].messages[msgIdx].edited = true;
+  await persist('conversations', convs);
+  return convs[idx].messages[msgIdx];
+}
 
 /* ==========================================================================
    SETTINGS / UI PREFERENCES
@@ -296,6 +315,11 @@ function buildCharacterSystemPrompt(character) {
 }
 
 const listeners = { chunk: [], done: [], error: [] };
+let currentAbortController = null;
+
+function stopGeneration() {
+  currentAbortController?.abort();
+}
 function onChunk(cb) { listeners.chunk.push(cb); }
 function onDone(cb) { listeners.done.push(cb); }
 function onError(cb) { listeners.error.push(cb); }
@@ -389,13 +413,16 @@ async function sendMessage({ character, history, userMessage }) {
     };
   }
 
+  currentAbortController = new AbortController();
+  const fetchInit = { method: 'POST', signal: currentAbortController.signal };
+
   // Ollama vive en tu red local: se llama directo, el proxy en la nube no
   // podría alcanzarlo. Los demás proveedores pasan por /api/proxy para
   // evitar bloqueos de CORS (Gemini, por ejemplo, los aplica siempre).
   const fetchTarget = providerId === 'ollama'
-    ? [targetURL, { method: 'POST', headers: targetHeaders, body: JSON.stringify(targetBody) }]
+    ? [targetURL, { ...fetchInit, headers: targetHeaders, body: JSON.stringify(targetBody) }]
     : ['/api/proxy', {
-        method: 'POST',
+        ...fetchInit,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url: targetURL, headers: targetHeaders, body: targetBody }),
       }];
@@ -444,6 +471,11 @@ async function sendMessage({ character, history, userMessage }) {
     listeners.done.forEach(cb => cb());
     return { success: true };
   } catch (err) {
+    if (err.name === 'AbortError') {
+      // El usuario pulsó "Parar" — no es un error, se guarda lo generado hasta ahora
+      listeners.done.forEach(cb => cb());
+      return { success: true, stopped: true };
+    }
     let msg = err.message;
     if (msg === 'Failed to fetch' || msg === 'Load failed') {
       msg = providerId === 'ollama'
@@ -452,6 +484,8 @@ async function sendMessage({ character, history, userMessage }) {
     }
     listeners.error.forEach(cb => cb(msg));
     return { success: false };
+  } finally {
+    currentAbortController = null;
   }
 }
 
@@ -687,8 +721,10 @@ const webAdapter = {
     appendMessage: async (convId, msg) => appendMessage(convId, msg),
     delete: async (id) => deleteConversation(id),
     rename: async (id, title) => renameConversation(id, title),
+    deleteMessage: async (convId, msgId) => deleteMessage(convId, msgId),
+    editMessage: async (convId, msgId, content) => editMessage(convId, msgId, content),
   },
-  ai: { sendMessage, onChunk, onDone, onError, removeListeners },
+  ai: { sendMessage, onChunk, onDone, onError, removeListeners, stopGeneration },
   settings: {
     get: async () => getSettings(),
     update: async (updates) => updateSettings(updates),

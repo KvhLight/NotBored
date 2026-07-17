@@ -1,11 +1,25 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
+import { Pencil, Trash2, RotateCcw, Check, X } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
 
-export default function MessageBubble({ message, characterAvatar, isStreaming, characterName }) {
+export default function MessageBubble({
+  message,
+  characterAvatar,
+  isStreaming,
+  characterName,
+  isLast,
+  onDelete,
+  onEdit,
+  onRegenerate,
+}) {
   const isUser = message.role === 'user';
   const { t } = useApp();
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(message.content);
+  const [showActions, setShowActions] = useState(false);
+
   // Renderiza *texto* en cursiva (estilizado) para acciones de roleplay
   function renderContent(text) {
     const parts = text.split(/(\*[^*]+\*)/g);
@@ -20,6 +34,16 @@ export default function MessageBubble({ message, characterAvatar, isStreaming, c
       return <span key={i}>{part}</span>;
     });
   }
+
+  function handleSaveEdit() {
+    const trimmed = draft.trim();
+    if (trimmed && trimmed !== message.content) {
+      onEdit?.(message.id, trimmed);
+    }
+    setEditing(false);
+  }
+
+  const canShowActions = !isStreaming && !editing && (onDelete || onEdit || onRegenerate);
 
   return (
     <motion.div
@@ -43,29 +67,94 @@ export default function MessageBubble({ message, characterAvatar, isStreaming, c
           )}
         </div>
       )}
-      {/* Bubble */}
-      <div className={`max-w-[78%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${
-        isUser
-          ? 'bg-msg-user text-white rounded-br-sm'
-          : 'bg-msg-ai text-gray-100 rounded-bl-sm border border-white/5'
-      }`}
-      >
-        <p className='whitespace-pre-wrap break-words'>
-          {renderContent(message.content)}
-          
-          {isStreaming && (
-            <span className='inline-block w-0.5 h-3.5 bg-accent ml-0.5 animate-pulse align-middle' />
-          )}
-        </p>
 
-        {/* Timestamp */}
-        {message.timestamp && (
-          <p className='text-xs mt-1 opacity-40 text-right'>
-            {new Date(message.timestamp).toLocaleTimeString([], {
-              hour: '2-digit', 
-              minute: '2-digit'
-            })}
-          </p>
+      <div className={`flex flex-col ${isUser ? 'items-end' : 'items-start'} max-w-[78%]`}>
+        {/* Bubble — tocarla muestra/oculta las acciones (editar/borrar/regenerar) */}
+        <div
+          onClick={() => canShowActions && setShowActions(p => !p)}
+          className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${
+            isUser
+              ? 'bg-msg-user text-white rounded-br-sm'
+              : 'bg-msg-ai text-gray-100 rounded-bl-sm border border-white/5'
+          }`}
+        >
+          {editing ? (
+            <div className='flex flex-col gap-2 min-w-[180px]'>
+              <textarea
+                autoFocus
+                value={draft}
+                onChange={e => setDraft(e.target.value)}
+                rows={Math.min(6, Math.max(2, draft.split('\n').length))}
+                className='bg-black/20 rounded-lg p-2 text-sm text-white outline-none resize-none w-full'
+              />
+              <div className='flex justify-end gap-2'>
+                <button
+                  onClick={() => { setDraft(message.content); setEditing(false); }}
+                  className='p-1.5 rounded-lg hover:bg-white/10 text-gray-300'
+                >
+                  <X size={14} />
+                </button>
+                <button
+                  onClick={handleSaveEdit}
+                  className='p-1.5 rounded-lg hover:bg-white/10 text-green-400'
+                >
+                  <Check size={14} />
+                </button>
+              </div>
+            </div>
+          ) : (
+            <p className='whitespace-pre-wrap break-words'>
+              {renderContent(message.content)}
+
+              {isStreaming && (
+                <span className='inline-block w-0.5 h-3.5 bg-accent ml-0.5 animate-pulse align-middle' />
+              )}
+            </p>
+          )}
+
+          {/* Timestamp */}
+          {message.timestamp && !editing && (
+            <p className='text-xs mt-1 opacity-40 text-right'>
+              {message.edited ? '✎ ' : ''}
+              {new Date(message.timestamp).toLocaleTimeString([], {
+                hour: '2-digit',
+                minute: '2-digit'
+              })}
+            </p>
+          )}
+        </div>
+
+        {/* Acciones: aparecen al tocar la burbuja */}
+        {showActions && canShowActions && (
+          <div className='flex items-center gap-1 mt-1 px-1'>
+            {isUser && onEdit && (
+              <button
+                onClick={() => { setEditing(true); setShowActions(false); }}
+                className='p-1.5 rounded-lg hover:bg-white/10 text-gray-500 hover:text-white'
+                title='Editar'
+              >
+                <Pencil size={12} />
+              </button>
+            )}
+            {!isUser && isLast && onRegenerate && (
+              <button
+                onClick={() => { onRegenerate(); setShowActions(false); }}
+                className='p-1.5 rounded-lg hover:bg-white/10 text-gray-500 hover:text-white'
+                title='Regenerar respuesta'
+              >
+                <RotateCcw size={12} />
+              </button>
+            )}
+            {onDelete && (
+              <button
+                onClick={() => { onDelete(message.id); setShowActions(false); }}
+                className='p-1.5 rounded-lg hover:bg-white/10 text-gray-500 hover:text-red-400'
+                title='Borrar'
+              >
+                <Trash2 size={12} />
+              </button>
+            )}
+          </div>
         )}
       </div>
 

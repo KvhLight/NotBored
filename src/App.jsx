@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { X } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import Sidebar from './components/Sidebar';
 import ChatWindow from './components/ChatWindow';
@@ -10,6 +11,7 @@ import BottomNavBar from './components/BottomNavBar';
 import RecentChatsView from './components/RecentChatsView';
 import ForgePanel from './components/ForgePanel';
 import { useApp } from './context/AppContext';
+import { PROVIDERS } from './config/providers';
 
 
 export default function App() {
@@ -27,11 +29,24 @@ export default function App() {
   const [showForge, setShowForge] = useState(false);
   const { t } = useApp();
   const [activeTagFilter, setActiveTagFilter] = useState(null);
+  const [showAiBanner, setShowAiBanner] = useState(false);
   
   // Cargar personajes al inicio
   useEffect(() => {
     loadCharacters();
+    checkAiConfigured();
   }, []);
+
+  async function checkAiConfigured() {
+    try {
+      const settings = await window.electronAPI.settings.get();
+      const meta = PROVIDERS[settings.provider] || {};
+      const hasKey = !meta.requiresApiKey || !!(settings.apiKeys && settings.apiKeys[settings.provider]);
+      setShowAiBanner(!hasKey);
+    } catch {
+      // si algo falla comprobándolo, mejor no molestar con un aviso incorrecto
+    }
+  }
 
   async function loadCharacters() {
     const chars = await window.electronAPI.characters.getAll();
@@ -151,6 +166,26 @@ export default function App() {
               exit={{ opacity: 0, x: -20 }}
               className='absolute inset-0'
             >
+              {showAiBanner && (
+                <div className='absolute top-12 left-3 right-3 z-20 flex items-center gap-2
+                                bg-accent/15 border border-accent/30 rounded-xl px-3 py-2.5 backdrop-blur-sm'>
+                  <span className='text-sm flex-1 text-white'>
+                    🤖 Configura tu IA para empezar a chatear
+                  </span>
+                  <button
+                    onClick={() => { setShowSettings(true); setShowAiBanner(false); }}
+                    className='text-xs font-semibold bg-accent text-white px-2.5 py-1.5 rounded-lg hover:bg-accent/80'
+                  >
+                    Configurar
+                  </button>
+                  <button
+                    onClick={() => setShowAiBanner(false)}
+                    className='text-gray-400 hover:text-white p-1'
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              )}
               <Sidebar
                 characters={characters}
                 activeTagFilter={activeTagFilter}
