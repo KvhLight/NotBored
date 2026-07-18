@@ -811,7 +811,7 @@ async function deleteAvatar() {
 /* ==========================================================================
    COPIA DE SEGURIDAD — exporta/importa todo lo guardado en localStorage
    ========================================================================== */
-const BACKUP_KEYS = ['characters', 'conversations', 'settings', 'uiPreferences'];
+const BACKUP_KEYS = ['characters', 'conversations', 'settings', 'uiPreferences', 'personas', 'wrappedReports'];
 
 async function exportAllData() {
   try {
