@@ -852,7 +852,36 @@ async function importAllData() {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'application/json,.json';
-    input.onchange = () => resolve(input.files?.[0] || null);
+    input.style.display = 'none';
+    document.body.appendChild(input);
+
+    let settled = false;
+    const cleanup = () => {
+      window.removeEventListener('focus', onFocusFallback);
+      input.remove();
+    };
+
+    input.onchange = () => {
+      settled = true;
+      const chosen = input.files?.[0] || null;
+      cleanup();
+      resolve(chosen);
+    };
+
+    // Respaldo: en iOS, si el usuario cancela el selector, a veces no dispara
+    // 'onchange'. Al volver el foco a la ventana sin haber resuelto ya, damos
+    // por hecho que se canceló, para no dejar la promesa colgada para siempre.
+    function onFocusFallback() {
+      setTimeout(() => {
+        if (!settled) {
+          settled = true;
+          cleanup();
+          resolve(null);
+        }
+      }, 300);
+    }
+    window.addEventListener('focus', onFocusFallback);
+
     input.click();
   });
 
