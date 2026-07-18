@@ -664,12 +664,39 @@ function selectFile() {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'image/png, image/jpeg, image/webp, image/gif, image/heic, image/heif';
+    input.style.display = 'none';
+    document.body.appendChild(input);
+
+    let settled = false;
+    const cleanup = () => {
+      window.removeEventListener('focus', onFocusFallback);
+      input.remove();
+    };
+
     input.onchange = () => {
+      settled = true;
       const file = input.files?.[0];
+      cleanup();
       if (!file) { resolve(null); return; }
       pendingFile = file;
       resolve(`webfile://${file.name}`);
     };
+
+    // Si el usuario cierra el selector sin elegir nada (cancelar), 'change'
+    // nunca se dispara y la promesa se quedaría esperando para siempre.
+    // Truco estándar: al cerrarse el selector, la ventana recupera el foco;
+    // si tras un instante no hubo 'change', asumimos que se canceló.
+    function onFocusFallback() {
+      setTimeout(() => {
+        if (!settled && (!input.files || input.files.length === 0)) {
+          settled = true;
+          cleanup();
+          resolve(null);
+        }
+      }, 300);
+    }
+    window.addEventListener('focus', onFocusFallback);
+
     // Necesario para que iOS Safari permita abrir el selector desde un callback async
     input.click();
   });
@@ -681,21 +708,33 @@ function selectFile() {
  * sin este paso, convertirlas a Base64 es lentísimo y además podría llenar
  * el almacenamiento del navegador (localStorage tiene muy poco espacio,
  * unos 5-10MB en total para toda la app).
+ *
+ * Además tiene un límite de tiempo: si por lo que sea el navegador se
+ * atasca decodificando la imagen, nunca se queda "cargando" para siempre —
+ * a los 20s falla con un error claro en vez de colgarse en silencio.
  */
 async function resizeImageToDataURL(file, maxDim = 1024, quality = 0.85) {
-  const bitmap = await createImageBitmap(file);
-  let { width, height } = bitmap;
-  if (width > maxDim || height > maxDim) {
-    const scale = maxDim / Math.max(width, height);
-    width = Math.round(width * scale);
-    height = Math.round(height * scale);
-  }
-  const canvas = document.createElement('canvas');
-  canvas.width = width;
-  canvas.height = height;
-  canvas.getContext('2d').drawImage(bitmap, 0, 0, width, height);
-  bitmap.close?.();
-  return canvas.toDataURL('image/jpeg', quality);
+  const work = (async () => {
+    const bitmap = await createImageBitmap(file);
+    let { width, height } = bitmap;
+    if (width > maxDim || height > maxDim) {
+      const scale = maxDim / Math.max(width, height);
+      width = Math.round(width * scale);
+      height = Math.round(height * scale);
+    }
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    canvas.getContext('2d').drawImage(bitmap, 0, 0, width, height);
+    bitmap.close?.();
+    return canvas.toDataURL('image/jpeg', quality);
+  })();
+
+  const timeout = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error('La imagen ha tardado demasiado en procesarse. Prueba con otra foto o una más ligera.')), 20000)
+  );
+
+  return Promise.race([work, timeout]);
 }
 
 async function toBase64() {
