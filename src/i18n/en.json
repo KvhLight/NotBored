@@ -34,6 +34,17 @@
     "copied": "Copied!",
     "deleteFrom": "Delete from here (and after)"
   },
+  "persona": {
+    "title": "Who are you?",
+    "enableToggle": "Enable custom persona",
+    "usingDefault": "Using your Settings profile: {{name}}",
+    "usingCustom": "Using a custom persona for this character",
+    "emptyState": "You haven't created any persona yet. Create one below so {{character}} knows who you are.",
+    "createNew": "Create new persona",
+    "titlePlaceholder": "Title (e.g. \"Me at work\")",
+    "namePlaceholder": "What the character will call you",
+    "descriptionPlaceholder": "Description of this persona (who they are, what they're like...)"
+  },
   "character": {
     "new": "New Lorecard",
     "edit": "Edit Character",

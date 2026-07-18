@@ -1,7 +1,8 @@
 import	React,	{	useState,	useEffect,	useRef	}	from	'react';
-import	{	History,	ArrowLeft,	Plus,	Send,	Loader2,	Image	as	ImageIcon,	Trash2,	X,	Square	}	from	'lucide-react';
+import	{	History,	ArrowLeft,	Plus,	Send,	Loader2,	Image	as	ImageIcon,	Trash2,	X,	Square,	UserCircle2	}	from	'lucide-react';
 import	{	motion,	AnimatePresence	}	from	'framer-motion';
 import	MessageBubble	from	'./MessageBubble';
+import	PersonaPicker	from	'./PersonaPicker';
 import	{	useApp	}	from	'../context/AppContext';
 
 export	default	function	ChatWindow({	character,	conversation,	onBack,	onNewChat,	onShowSessions	})	{
@@ -12,13 +13,43 @@ export	default	function	ChatWindow({	character,	conversation,	onBack,	onNewChat,
 		const	[error,	setError]	=	useState(null);
 		const	[showWallpaperMenu,	setShowWallpaperMenu]	=	useState(false);
 		const	[wallpaperLoading,	setWallpaperLoading]	=	useState(false);
-		const	{	t,	getChatWallpaper,	saveChatWallpaper	}	=	useApp();
+		const	{	t,	getChatWallpaper,	saveChatWallpaper,	getUserContextBlock	}	=	useApp();
 		const	bottomRef	=	useRef(null);
 		const	inputRef	=	useRef(null);
 		const	pendingAiMsgId	=	useRef(null);
 		const	convId	=	conversation.id;
 		const	chatWallpaper	=	getChatWallpaper(character.id);
   const [maxContextTokens, setMaxContextTokens] = useState(4000);
+  const [showPersonaPicker, setShowPersonaPicker] = useState(false);
+  const [activePersona, setActivePersona] = useState(null); // null = usar el perfil por defecto de Ajustes
+
+  async function loadActivePersona() {
+    const selection = await window.electronAPI.personas.getSelection(character.id);
+    if (!selection.enabled || !selection.personaId) {
+      setActivePersona(null);
+      return;
+    }
+    const all = await window.electronAPI.personas.getAll();
+    setActivePersona(all.find(p => p.id === selection.personaId) || null);
+  }
+
+  useEffect(() => {
+    loadActivePersona();
+  }, [character.id]);
+
+  // Bloque de "quién eres tú" a inyectar en el prompt: la persona activa
+  // para este personaje, o si no hay ninguna, el perfil por defecto de Ajustes
+  function buildUserContextBlock() {
+    if (activePersona) {
+      return [
+        '=== USUARIO ===',
+        `El usuario se llama ${activePersona.name}.`,
+        activePersona.description || '',
+        'Recuerda esta información y trátalo acorde a ella durante toda la conversación.',
+      ].filter(Boolean).join('\n');
+    }
+    return getUserContextBlock();
+  }
 
   // Estimación simple de tokens (misma heurística que usa el envío real: ~4 caracteres = 1 token)
   function estimateTokens(text) {
@@ -123,7 +154,12 @@ export	default	function	ChatWindow({	character,	conversation,	onBack,	onNewChat,
     pendingAiMsgId.current = placeholder.id;
 
     try {
-      await window.electronAPI.ai.sendMessage({ character, history, userMessage });
+      await window.electronAPI.ai.sendMessage({
+        character,
+        history,
+        userMessage,
+        userContextBlock: buildUserContextBlock(),
+      });
     } catch (err) {
       // El error llega por el listener onError, no aquí
     }
@@ -250,7 +286,7 @@ export	default	function	ChatWindow({	character,	conversation,	onBack,	onNewChat,
 
   return	(
 		<div
-			className={`flex	flex-col	h-full	bg-app-bg	${chatWallpaper	?	'chat-wallpaper-layer'	:	''}`}
+			className={`flex	flex-col	h-full	relative	bg-app-bg	${chatWallpaper	?	'chat-wallpaper-layer'	:	''}`}
 			style={chatWallpaper	?	{	backgroundImage:	`url(${chatWallpaper})`	}	:	undefined}
 		>
       
@@ -410,6 +446,14 @@ export	default	function	ChatWindow({	character,	conversation,	onBack,	onNewChat,
       {/* Input Bar */}
       <div className='px-4 pb-8 pt-3 border-t border-white/5'>
         <div className='flex items-end gap-2 bg-card-bg rounded-2xl p-2 border border-white/10 focus-within:border-accent/50 transition-colors'>
+          <button
+            onClick={() => setShowPersonaPicker(true)}
+            className={`p-2.5 rounded-xl flex-shrink-0 transition-colors ${activePersona ? 'text-accent bg-accent/10' : 'text-gray-500 hover:text-white hover:bg-white/5'}`}
+            title={t('persona.title')}
+          >
+            <UserCircle2 size={18} />
+          </button>
+
           <textarea
             ref={inputRef}
             rows={1}
@@ -440,6 +484,14 @@ export	default	function	ChatWindow({	character,	conversation,	onBack,	onNewChat,
           {t('chat.keyboardHint')}
         </p>
       </div>
+
+      <PersonaPicker
+        isOpen={showPersonaPicker}
+        onClose={() => setShowPersonaPicker(false)}
+        characterId={character.id}
+        characterName={character.name}
+        onChange={() => loadActivePersona()}
+      />
 
     </div>
   );

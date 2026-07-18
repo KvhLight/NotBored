@@ -283,6 +283,56 @@ async function setChatWallpaper(characterId, value) {
 }
 
 /* ==========================================================================
+   PERSONAS — perfiles alternativos del usuario, reutilizables entre
+   personajes. El perfil de Ajustes es el "por defecto" y no vive aquí.
+   ========================================================================== */
+async function getAllPersonas() {
+  return load('personas', []);
+}
+async function createPersona({ title, name, description }) {
+  const personas = await getAllPersonas();
+  const newPersona = {
+    id: uuid(),
+    title: title?.trim() || 'Sin título',
+    name: name?.trim() || '',
+    description: description?.trim() || '',
+    createdAt: Date.now(),
+  };
+  personas.push(newPersona);
+  await persist('personas', personas);
+  return newPersona;
+}
+async function deletePersona(id) {
+  await persist('personas', (await getAllPersonas()).filter(p => p.id !== id));
+  // Si alguna selección por personaje apuntaba a esta persona borrada,
+  // la desactivamos para no dejarla apuntando a algo que ya no existe
+  const prefs = await getUiPreferences();
+  const sels = { ...(prefs.personaSelections || {}) };
+  let changed = false;
+  for (const charId of Object.keys(sels)) {
+    if (sels[charId]?.personaId === id) {
+      sels[charId] = { ...sels[charId], personaId: null };
+      changed = true;
+    }
+  }
+  if (changed) await updateUiPreferences({ personaSelections: sels });
+  return true;
+}
+
+// Qué persona (si alguna) está activa para un personaje concreto.
+// { enabled: false } => se usa el perfil por defecto de Ajustes.
+async function getPersonaSelection(characterId) {
+  const prefs = await getUiPreferences();
+  return (prefs.personaSelections && prefs.personaSelections[characterId]) || { enabled: false, personaId: null };
+}
+async function setPersonaSelection(characterId, selection) {
+  const prefs = await getUiPreferences();
+  const personaSelections = { ...(prefs.personaSelections || {}), [characterId]: selection };
+  await updateUiPreferences({ personaSelections });
+  return selection;
+}
+
+/* ==========================================================================
 
    IA — DeepSeek (llamada directa desde el navegador con fetch + streaming)
    ========================================================================== */
@@ -305,7 +355,7 @@ function buildContextWindow(messages, systemPrompt, maxTokens = 4000) {
   }
   return [systemMsg, ...ctx];
 }
-function buildCharacterSystemPrompt(character) {
+function buildCharacterSystemPrompt(character, userContextBlock) {
   const parts = [
     '=== IDENTITY ===',
     `You are ${character.name}. You are not an AI, you are not an assistant.`,
@@ -336,6 +386,9 @@ function buildCharacterSystemPrompt(character) {
     '6. Remember previous events in the conversation and refer back to them.',
     '7. Do not use disclaimers, warnings, or meta-comments.',
   ];
+  if (userContextBlock) {
+    parts.push('', userContextBlock);
+  }
   return parts.filter(Boolean).join('\n');
 }
 
@@ -394,7 +447,7 @@ async function getOllamaModels() {
   }
 }
 
-async function sendMessage({ character, history, userMessage }) {
+async function sendMessage({ character, history, userMessage, userContextBlock }) {
   const settings = await getSettings();
   const { baseURL, apiKey, meta, providerId } = getProviderConfig(settings);
 
@@ -402,7 +455,7 @@ async function sendMessage({ character, history, userMessage }) {
     listeners.error.forEach(cb => cb(`Falta la API Key de ${meta.label}. Ve a Ajustes → IA y pégala.`));
     return { success: false };
   }
-  const systemPrompt = buildCharacterSystemPrompt(character);
+  const systemPrompt = buildCharacterSystemPrompt(character, userContextBlock);
   const contextMessages = buildContextWindow(history, systemPrompt, settings.maxContextTokens);
   contextMessages.push({ role: 'user', content: userMessage });
 
@@ -764,6 +817,13 @@ const webAdapter = {
   image: { selectFile, saveAvatar, toBase64, deleteAvatar },
   forge: { generateCharacter: forgeGenerateCharacter },
   ollama: { getModels: async () => getOllamaModels() },
+  personas: {
+    getAll: async () => getAllPersonas(),
+    create: async (data) => createPersona(data),
+    delete: async (id) => deletePersona(id),
+    getSelection: async (charId) => getPersonaSelection(charId),
+    setSelection: async (charId, sel) => setPersonaSelection(charId, sel),
+  },
   data: { exportAll: exportAllData, importAll: importAllData },
 };
 

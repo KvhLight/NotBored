@@ -34,6 +34,17 @@
     "copied": "¡Copiado!",
     "deleteFrom": "Borrar desde aquí (y lo posterior)"
   },
+  "persona": {
+    "title": "¿Quién eres tú?",
+    "enableToggle": "Activar persona personalizada",
+    "usingDefault": "Usando tu perfil de Ajustes: {{name}}",
+    "usingCustom": "Usando una persona personalizada para este personaje",
+    "emptyState": "No tienes ninguna persona creada todavía. Crea una con el botón de abajo para que {{character}} sepa quién eres.",
+    "createNew": "Crear nueva persona",
+    "titlePlaceholder": "Título (ej. \"Yo en el trabajo\")",
+    "namePlaceholder": "Cómo te llamará el personaje",
+    "descriptionPlaceholder": "Descripción de esta persona (quién es, cómo es...)"
+  },
   "character": {
     "new": "Nueva Lorecard",
     "edit": "Editar Personaje",
