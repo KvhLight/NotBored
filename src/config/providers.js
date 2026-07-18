@@ -15,6 +15,7 @@ export const PROVIDERS = {
     label: 'DeepSeek',
     baseURL: 'https://api.deepseek.com/v1',
     requiresApiKey: true,
+    isPaid: true,
     keyPlaceholder: 'sk-...',
     // deepseek-chat / deepseek-reasoner se retiran el 24 de julio de 2026.
     // deepseek-v4-flash = rápido y barato · deepseek-v4-pro = mejor calidad

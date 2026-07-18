@@ -151,6 +151,20 @@ async function getAllConversations() {
   await migrateFromLocalStorageIfNeeded();
   return load('conversations', []);
 }
+// Conversaciones de TODOS los personajes con mensajes dentro de un rango de
+// fechas — se usa para el análisis Wrapped, que mira a toda la actividad,
+// no a un personaje en concreto.
+async function getConversationsInRange(sinceTimestamp) {
+  const [chars, convs] = await Promise.all([getAllCharacters(), getAllConversations()]);
+  const charMap = Object.fromEntries(chars.map(c => [c.id, c]));
+  return convs
+    .map(conv => ({
+      ...conv,
+      characterName: charMap[conv.characterId]?.name || 'Desconocido',
+      messages: (conv.messages || []).filter(m => m.timestamp >= sinceTimestamp),
+    }))
+    .filter(conv => conv.messages.length > 0);
+}
 async function getConversationsByCharacter(characterId) {
   return (await getAllConversations())
     .filter(c => c.characterId === characterId)
@@ -330,6 +344,24 @@ async function setPersonaSelection(characterId, selection) {
   const personaSelections = { ...(prefs.personaSelections || {}), [characterId]: selection };
   await updateUiPreferences({ personaSelections });
   return selection;
+}
+
+/* ==========================================================================
+   WRAPPED — informes guardados del análisis de conversaciones
+   ========================================================================== */
+async function getAllWrappedReports() {
+  return load('wrappedReports', []);
+}
+async function saveWrappedReport(report) {
+  const reports = await getAllWrappedReports();
+  const newReport = { id: uuid(), createdAt: Date.now(), ...report };
+  reports.unshift(newReport); // el más reciente primero
+  await persist('wrappedReports', reports);
+  return newReport;
+}
+async function deleteWrappedReport(id) {
+  await persist('wrappedReports', (await getAllWrappedReports()).filter(r => r.id !== id));
+  return true;
 }
 
 /* ==========================================================================
@@ -570,13 +602,78 @@ async function sendMessage({ character, history, userMessage, userContextBlock }
 /* ==========================================================================
    FORGE — generación automática de personajes
    ========================================================================== */
-async function forgeGenerateCharacter(idea) {
+/**
+ * Llamada genérica a la IA SIN streaming — devuelve el texto crudo de la
+ * respuesta. La usan tanto Forge (generar personajes) como el análisis
+ * Wrapped (resumir y combinar conversaciones), para no duplicar la lógica
+ * de "qué formato de petición usa cada proveedor" en varios sitios.
+ *
+ * providerId es opcional: si no se pasa, usa el proveedor activo en Ajustes.
+ */
+export async function callAIOnce({ systemPrompt, userPrompt, temperature = 0.8, maxTokens = 800, providerId: forcedProviderId } = {}) {
   const settings = await getSettings();
+  if (forcedProviderId) settings.provider = forcedProviderId;
   const { baseURL, apiKey, meta, providerId } = getProviderConfig(settings);
+
   if (meta.requiresApiKey && !apiKey) {
     return { success: false, error: `Falta la API Key de ${meta.label}. Configúrala en Ajustes.` };
   }
 
+  const model = (meta.models && !meta.models.includes(settings.model)) ? meta.defaultModel : (settings.model || meta.defaultModel);
+  let url, headers, body;
+
+  if (meta.format === 'gemini-native') {
+    url = `${baseURL}/models/${model}:generateContent`;
+    headers = { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey };
+    body = {
+      contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+      systemInstruction: { parts: [{ text: systemPrompt }] },
+      generationConfig: { temperature, maxOutputTokens: maxTokens },
+    };
+  } else {
+    url = `${baseURL}/chat/completions`;
+    headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` };
+    body = {
+      model,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+      temperature,
+      max_tokens: maxTokens,
+    };
+  }
+
+  const target = providerId === 'ollama'
+    ? [url, { method: 'POST', headers, body: JSON.stringify(body) }]
+    : ['/api/proxy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url, headers, body }),
+      }];
+
+  try {
+    const resp = await fetch(...target);
+    if (!resp.ok) {
+      const bodyText = await resp.text().catch(() => '');
+      let detail = '';
+      try { detail = JSON.parse(bodyText)?.error?.message || ''; } catch { detail = bodyText.slice(0, 200); }
+      return { success: false, error: `Error de ${meta.label} (código ${resp.status}).${detail ? ` ${detail}` : ''}`, providerId };
+    }
+    const data = await resp.json();
+    const raw = meta.format === 'gemini-native'
+      ? (data.candidates?.[0]?.content?.parts?.[0]?.text || '')
+      : (data.choices?.[0]?.message?.content || '');
+    return { success: true, text: raw, providerId };
+  } catch (err) {
+    const msg = (err.message === 'Failed to fetch' || err.message === 'Load failed')
+      ? 'Sin conexión, o el servicio no respondió.'
+      : err.message;
+    return { success: false, error: msg, providerId };
+  }
+}
+
+async function forgeGenerateCharacter(idea) {
   const systemPrompt = `You are an expert RPG and video game narrative designer.
 Your sole task is to generate deeply detailed NPC lorecards based on vague user ideas.
 You must always strictly return a single, valid JSON object.
@@ -598,52 +695,11 @@ You MUST respond using this exact JSON structure:
   "secretMotivation": "A hidden core motivation or dark secret the player could discover over time"
 }`;
 
-  const model = (meta.models && !meta.models.includes(settings.model)) ? meta.defaultModel : (settings.model || meta.defaultModel);
-  let forgeURL, forgeHeaders, forgeReqBody;
-
-  if (meta.format === 'gemini-native') {
-    forgeURL = `${baseURL}/models/${model}:generateContent`;
-    forgeHeaders = { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey };
-    forgeReqBody = {
-      contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
-      systemInstruction: { parts: [{ text: systemPrompt }] },
-      generationConfig: { temperature: 0.95, maxOutputTokens: 800 },
-    };
-  } else {
-    forgeURL = `${baseURL}/chat/completions`;
-    forgeHeaders = { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` };
-    forgeReqBody = {
-      model,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
-      temperature: 0.95,
-      max_tokens: 800,
-    };
-  }
-
-  const forgeTarget = providerId === 'ollama'
-    ? [forgeURL, { method: 'POST', headers: forgeHeaders, body: JSON.stringify(forgeReqBody) }]
-    : ['/api/proxy', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: forgeURL, headers: forgeHeaders, body: forgeReqBody }),
-      }];
+  const result = await callAIOnce({ systemPrompt, userPrompt, temperature: 0.95, maxTokens: 800 });
+  if (!result.success) return { success: false, error: result.error };
 
   try {
-    const resp = await fetch(...forgeTarget);
-    if (!resp.ok) {
-      const bodyText = await resp.text().catch(() => '');
-      let detail = '';
-      try { detail = JSON.parse(bodyText)?.error?.message || ''; } catch { detail = bodyText.slice(0, 200); }
-      throw new Error(`Error al forjar personaje (código ${resp.status}).${detail ? ` ${detail}` : ''}`);
-    }
-    const data = await resp.json();
-    const raw = meta.format === 'gemini-native'
-      ? (data.candidates?.[0]?.content?.parts?.[0]?.text || '')
-      : (data.choices?.[0]?.message?.content || '');
-    const clean = raw.replace(/```json/g, '').replace(/```/g, '').trim();
+    const clean = result.text.replace(/```json/g, '').replace(/```/g, '').trim();
     if (!clean) throw new Error('La IA devolvió una respuesta vacía.');
     const parsed = JSON.parse(clean);
     if (!parsed.name || !parsed.systemPrompt) throw new Error('Estructura de ficha incompleta.');
@@ -834,6 +890,7 @@ const webAdapter = {
   },
   conversations: {
     byCharacter: async (charId) => getConversationsByCharacter(charId),
+    getInRange: async (since) => getConversationsInRange(since),
     create: async (charId) => createConversation(charId),
     appendMessage: async (convId, msg) => appendMessage(convId, msg),
     delete: async (id) => deleteConversation(id),
@@ -862,6 +919,11 @@ const webAdapter = {
     delete: async (id) => deletePersona(id),
     getSelection: async (charId) => getPersonaSelection(charId),
     setSelection: async (charId, sel) => setPersonaSelection(charId, sel),
+  },
+  wrappedReports: {
+    getAll: async () => getAllWrappedReports(),
+    save: async (report) => saveWrappedReport(report),
+    delete: async (id) => deleteWrappedReport(id),
   },
   data: { exportAll: exportAllData, importAll: importAllData },
 };

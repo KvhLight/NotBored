@@ -3,6 +3,7 @@ import	{	X,	Save,	Key,	Sliders,	Palette,	Image	as	ImageIcon,	Check,	Trash2, Wall
 import	{	motion	}	from	'framer-motion';
 import	{	useApp	}	from	'../context/AppContext';
 import	AvatarPicker	from	'./AvatarPicker';
+import WrappedModal from './WrappedModal';
 import { PROVIDERS, DEFAULT_PROVIDER } from '../config/providers';
 
 const DEFAULT_TONES = [
@@ -49,6 +50,7 @@ export default function SettingsModal({ onClose }) {
   const [wallpaperLoading, setWallpaperLoading] = useState(false);
   const [wallpaperError, setWallpaperError] = useState('');
   const [showConfirmModal, setShowConfirmModal] = useState(false); // modal confirm
+  const [showWrapped, setShowWrapped] = useState(false);
   const [confirmTarget, setConfirmTarget] = useState(null); // 'apply'|'remove'|'revert'
   const {
     t,
@@ -300,6 +302,14 @@ export default function SettingsModal({ onClose }) {
                   <span>›</span>
                 </button>
               )}
+
+              <button
+                onClick={() => setShowWrapped(true)}
+                className='w-full flex items-center justify-between p-4 rounded-xl bg-card-bg border border-white/10 hover:bg-white/5'
+              >
+                <span>✨ Wrapped</span>
+                <span>›</span>
+              </button>
             </div>
           )}
           	{/*	Apariencia	—	NUEVA	SECCIÓN	*/}
@@ -831,6 +841,8 @@ export default function SettingsModal({ onClose }) {
 
         </div>
       </motion.div>
+
+      <WrappedModal isOpen={showWrapped} onClose={() => setShowWrapped(false)} />
     </div>
   );
 }
