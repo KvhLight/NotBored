@@ -851,7 +851,12 @@ async function importAllData() {
   const file = await new Promise((resolve) => {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = 'application/json,.json';
+    // Deliberadamente permisivo: en iOS, un archivo .json recibido por
+    // AirDrop/WhatsApp/etc. a veces no lleva la etiqueta MIME
+    // "application/json", así que filtrar solo por eso puede dejarlo
+    // atenuado/no seleccionable en el picker. Se valida igualmente el
+    // contenido real (JSON.parse) más abajo.
+    input.accept = '.json,application/json,text/plain,text/json,*/*';
     input.style.display = 'none';
     document.body.appendChild(input);
 
