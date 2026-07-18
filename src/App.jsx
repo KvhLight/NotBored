@@ -282,6 +282,7 @@ export default function App() {
               className='absolute inset-0'
             >
               {!editingCharacter && (
+                <div className='px-4 pt-12'>
                 <div className='flex bg-card-bg rounded-full p-1 mb-4'>
                   <button
                     type='button'
@@ -312,6 +313,7 @@ export default function App() {
                   >
                     {t('characterForm.forge')}
                   </button>
+                </div>
                 </div>
               )}
 
