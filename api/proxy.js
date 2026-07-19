@@ -9,7 +9,13 @@
 // ningún cambio porque ya llama a la ruta relativa '/api/proxy'.
 // ============================================================================
 
-export const config = { runtime: 'edge' };
+// Node.js (no 'edge'): las funciones Edge de Vercel tienen un límite duro de
+// 25s para empezar a responder. Forge espera la respuesta COMPLETA de la IA
+// antes de devolver nada (no hace streaming), así que una idea compleja podía
+// superar ese límite y la función moría con FUNCTION_INVOCATION_TIMEOUT.
+// Node.js permite hasta 60s en el plan Hobby, y sigue soportando el
+// streaming SSE del chat con normalidad.
+export const config = { maxDuration: 60 };
 
 const ALLOWED_HOSTS = [
   'api.deepseek.com',

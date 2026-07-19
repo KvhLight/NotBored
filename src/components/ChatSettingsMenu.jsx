@@ -67,6 +67,7 @@ export default function ChatSettingsMenu({
 
   return (
     <AnimatePresence>
+      {!subPanel && (
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -119,6 +120,7 @@ export default function ChatSettingsMenu({
           </div>
         </motion.div>
       </motion.div>
+      )}
 
       <PersonaPicker
         isOpen={subPanel === 'persona'}

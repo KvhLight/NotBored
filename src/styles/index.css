@@ -86,12 +86,11 @@
 [data-theme="light"] .bg-app-bg { background-color: hsl(var(--app-bg-h) var(--app-bg-s) var(--app-bg-l)); }
 [data-theme="light"] .bg-black\/20 { background-color: rgba(0, 0, 0, 0.06); }
 
-/*	Capa	de	fondo	de	la	app	—	se	pinta	detrás	de	#root	cuando	hay	wallpaper	*/
+/*	Fondo	de	pantalla	de	la	app	— aplicado directamente sobre el contenedor
+	exterior real (antes era una capa aparte con z-index negativo, pero el
+	fondo opaco del propio contenedor la tapaba: en CSS, el fondo de un
+	elemento siempre se pinta por encima de sus hijos con z-index negativo) */
   .app-wallpaper-layer	{
-    position:	fixed;
-    inset:	0;
-    z-index:	-1;
-    background-color:	var(--color-app-bg);
     background-image:	var(--app-wallpaper-image);
     background-size:	cover;
     background-position:	center;

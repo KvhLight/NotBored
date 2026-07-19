@@ -1,5 +1,5 @@
 import	React,	{	useState,	useEffect	}	from	'react';
-import	{	X,	Save,	Key,	Sliders,	Palette,	Image	as	ImageIcon,	Check,	Trash2, Wallet, Sun, Moon	}	from	'lucide-react';
+import	{	X,	Save,	Key,	Sliders,	Palette,	Image	as	ImageIcon,	Check,	Trash2, Wallet, Sun, Moon, RotateCcw	}	from	'lucide-react';
 import	{	motion	}	from	'framer-motion';
 import	{	useApp	}	from	'../context/AppContext';
 import	AvatarPicker	from	'./AvatarPicker';
