@@ -9,6 +9,7 @@ export function AppProvider({ children }) {
   const [userProfile, setUserProfile] = useState({
     alias: 'Viajero',
     avatar: '👤',
+    gender: '', // '' = sin especificar, no se menciona a la IA
     roleTone: 'casual', // 'casual' | 'formal' | 'epic'
     temperature: 0.85,
   });
@@ -104,13 +105,19 @@ export function AppProvider({ children }) {
       formal: 'Trata al usuario con respeto y formalidad.',
       epic: 'Trata al usuario como a un héroe legendario.',
     };
+    const genderMap = {
+      male: 'El usuario es un hombre.',
+      female: 'El usuario es una mujer.',
+      other: 'El usuario no se identifica como hombre ni mujer.',
+    };
 
     return [
       '=== USUARIO ===',
       `El usuario se llama ${userProfile.alias}.`,
+      genderMap[userProfile.gender] || '', // vacío si es 'unspecified' o no está definido — no se menciona
       toneMap[userProfile.roleTone] || toneMap.casual,
       'Recuerda su nombre y úsalo naturalmente en la conversación.',
-    ].join('\n');
+    ].filter(Boolean).join('\n');
   }
 
   return (

@@ -111,6 +111,11 @@
     "title": "Mi Perfil",
     "IAname": "Cómo te llama la IA",
     "namePlaceholder": "Tu nombre",
+    "gender": "Género",
+    "genderMale": "Hombre",
+    "genderFemale": "Mujer",
+    "genderOther": "Otro",
+    "genderUnspecified": "Prefiero no decirlo",
     "tone": "Tono preferido",
     "tonePlaceholder": "casual, épico, sarcástico...",
     "autoSave": "Los cambios de perfil se guardan automaticamente"

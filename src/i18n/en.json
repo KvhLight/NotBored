@@ -112,6 +112,11 @@
     "title": "My Profile",
     "IAname": "How the AI calls you",
     "namePlaceholder": "Your name",
+    "gender": "Gender",
+    "genderMale": "Male",
+    "genderFemale": "Female",
+    "genderOther": "Other",
+    "genderUnspecified": "Prefer not to say",
     "tone": "Preffered tone",
     "tonePlaceholder": "casual, epic, sarcastic...",
     "autoSave": "Profile changes are saved automatically."

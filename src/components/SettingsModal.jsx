@@ -560,7 +560,7 @@ export default function SettingsModal({ onClose }) {
               <input
                 value={userProfile.alias}
                 onChange={e => saveProfile({ alias: e.target.value })}
-                placeholder={t('profile.namePlaceHolder')}
+                placeholder={t('profile.namePlaceholder')}
                 className='w-full bg-app-bg text-white text-sm rounded-xl px-3 py-2.5 border border-white/10 focus:border-accent/60 outline-none'
               />
 
