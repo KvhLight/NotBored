@@ -317,7 +317,7 @@ async function setChatWallpaper(characterId, value) {
 async function getAllPersonas() {
   return load('personas', []);
 }
-async function createPersona({ title, name, description, lore }) {
+async function createPersona({ title, name, description, lore, gender }) {
   const personas = await getAllPersonas();
   const newPersona = {
     id: uuid(),
@@ -325,6 +325,7 @@ async function createPersona({ title, name, description, lore }) {
     name: name?.trim() || '',
     description: description?.trim() || '',
     lore: lore?.trim() || '',
+    gender: gender || null,
     createdAt: Date.now(),
   };
   personas.push(newPersona);
@@ -699,11 +700,39 @@ export async function callAIOnce({ systemPrompt, userPrompt, temperature = 0.8, 
   }
 }
 
+// Extrae el primer objeto JSON completo de un texto, ignorando cualquier
+// texto que la IA haya añadido antes o después (a veces lo hace pese a que
+// se le pide que no lo haga). Cuenta llaves respetando strings, para no
+// confundirse con '{' o '}' que aparezcan dentro del propio texto generado.
+function extractJsonObject(text) {
+  const start = text.indexOf('{');
+  if (start === -1) throw new Error('La IA no devolvió ningún JSON reconocible.');
+  let depth = 0, inString = false, escaped = false;
+  for (let i = start; i < text.length; i++) {
+    const ch = text[i];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (ch === '\\') escaped = true;
+      else if (ch === '"') inString = false;
+    } else {
+      if (ch === '"') inString = true;
+      else if (ch === '{') depth++;
+      else if (ch === '}') {
+        depth--;
+        if (depth === 0) return text.slice(start, i + 1);
+      }
+    }
+  }
+  // Si llegamos al final del texto sin cerrar todas las llaves, la
+  // respuesta se cortó (normalmente por quedarse sin tokens disponibles).
+  throw new Error('La respuesta de la IA se cortó a mitad de generación (quedó incompleta). Prueba de nuevo o acorta la idea.');
+}
+
 async function forgeGenerateCharacter(idea) {
   const systemPrompt = `You are an expert RPG and video game narrative designer.
 Your sole task is to generate deeply detailed NPC lorecards based on vague user ideas.
 You must always strictly return a single, valid JSON object.
-Do NOT include markdown blocks (like \`\`\`json), no pre-text, no post-text, no conversational filler. Just raw JSON.`;
+Do NOT include markdown blocks (like \`\`\`json), no pre-text, no post-text, no conversational filler, no comments about what you're doing. Just raw JSON, nothing else.`;
 
   const userPrompt = `Generate a full, high-quality NPC lorecard for this idea: "${idea}"
 Fill all fields with rich, creative, and immersive content.
@@ -721,13 +750,16 @@ You MUST respond using this exact JSON structure:
   "secretMotivation": "A hidden core motivation or dark secret the player could discover over time"
 }`;
 
-  const result = await callAIOnce({ systemPrompt, userPrompt, temperature: 0.95, maxTokens: 800 });
+  // maxTokens generoso: la ficha completa (8 campos, varios de ellos con
+  // varias frases) no cabe en 800 tokens — se cortaba a mitad de generación
+  // y el JSON quedaba inválido ("unterminated string").
+  const result = await callAIOnce({ systemPrompt, userPrompt, temperature: 0.95, maxTokens: 2000 });
   if (!result.success) return { success: false, error: result.error };
 
   try {
-    const clean = result.text.replace(/```json/g, '').replace(/```/g, '').trim();
-    if (!clean) throw new Error('La IA devolvió una respuesta vacía.');
-    const parsed = JSON.parse(clean);
+    if (!result.text || !result.text.trim()) throw new Error('La IA devolvió una respuesta vacía.');
+    const jsonSlice = extractJsonObject(result.text);
+    const parsed = JSON.parse(jsonSlice);
     if (!parsed.name || !parsed.systemPrompt) throw new Error('Estructura de ficha incompleta.');
     return { success: true, character: parsed };
   } catch (err) {

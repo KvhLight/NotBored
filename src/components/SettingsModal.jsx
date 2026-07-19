@@ -3,6 +3,7 @@ import	{	X,	Save,	Key,	Sliders,	Palette,	Image	as	ImageIcon,	Check,	Trash2, Wall
 import	{	motion	}	from	'framer-motion';
 import	{	useApp	}	from	'../context/AppContext';
 import	AvatarPicker	from	'./AvatarPicker';
+import GenderSelector from './GenderSelector';
 import WrappedModal from './WrappedModal';
 import { PROVIDERS, DEFAULT_PROVIDER } from '../config/providers';
 
@@ -562,6 +563,15 @@ export default function SettingsModal({ onClose }) {
                 placeholder={t('profile.namePlaceHolder')}
                 className='w-full bg-app-bg text-white text-sm rounded-xl px-3 py-2.5 border border-white/10 focus:border-accent/60 outline-none'
               />
+
+              <label className='text-xs text-gray-500 mb-1.5 mt-3 block'>
+                {t('profile.gender')}
+              </label>
+              <GenderSelector
+                value={userProfile.gender}
+                onChange={(gender) => saveProfile({ gender })}
+                t={t}
+              />
             </div>
             <AvatarPicker
               value={userProfile.avatar}
@@ -846,4 +856,3 @@ export default function SettingsModal({ onClose }) {
     </div>
   );
 }
-

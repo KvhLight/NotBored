@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, MapPinned, RotateCcw } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import useKeyboardInset from '../hooks/useKeyboardInset';
 
 /**
  * Panel para editar el escenario de ESTA conversación en concreto.
@@ -13,12 +14,24 @@ export default function ScenarioEditor({ isOpen, onClose, character, conversatio
   const { t } = useApp();
   const [value, setValue] = useState('');
   const [saving, setSaving] = useState(false);
+  const textareaRef = useRef(null);
+  const keyboardInset = useKeyboardInset(isOpen);
 
   useEffect(() => {
     if (isOpen) setValue(conversation?.scenarioOverride || '');
   }, [isOpen, conversation?.id]);
 
   if (!isOpen) return null;
+
+  function handleTextareaFocus() {
+    // En iOS el teclado tarda en terminar de animarse; si hacemos scroll
+    // demasiado pronto, el navegador recalcula la posición sobre un
+    // viewport que todavía se está encogiendo y el campo vuelve a quedar
+    // tapado. Un pequeño margen es suficiente para que ya esté asentado.
+    setTimeout(() => {
+      textareaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 300);
+  }
 
   async function handleSave() {
     setSaving(true);
@@ -52,6 +65,7 @@ export default function ScenarioEditor({ isOpen, onClose, character, conversatio
           exit={{ y: '100%' }}
           transition={{ type: 'spring', damping: 28, stiffness: 300 }}
           onClick={e => e.stopPropagation()}
+          style={{ paddingBottom: keyboardInset ? keyboardInset + 16 : undefined }}
           className='w-full bg-card-bg rounded-t-3xl border-t border-white/10 p-4 max-h-[80%] overflow-y-auto'
         >
           <div className='flex items-center justify-between mb-3'>
@@ -69,8 +83,10 @@ export default function ScenarioEditor({ isOpen, onClose, character, conversatio
           </p>
 
           <textarea
+            ref={textareaRef}
             value={value}
             onChange={e => setValue(e.target.value)}
+            onFocus={handleTextareaFocus}
             placeholder={character?.scenario
               ? t('scenarioEditor.placeholderWithDefault', { defaultScenario: character.scenario })
               : t('scenarioEditor.placeholderEmpty')}

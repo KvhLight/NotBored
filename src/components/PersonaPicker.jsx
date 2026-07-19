@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Plus, Trash2, UserCircle2, Check, Pencil } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import useKeyboardInset from '../hooks/useKeyboardInset';
+import GenderSelector from './GenderSelector';
 
 /**
  * Panel de selección de "persona" — quién eres tú de cara a la IA, en este
@@ -13,6 +15,7 @@ export default function PersonaPicker({ isOpen, onClose, characterId, characterN
   const [personas, setPersonas] = useState([]);
   const [selection, setSelection] = useState({ enabled: false, personaId: null });
   const [creating, setCreating] = useState(false);
+  const keyboardInset = useKeyboardInset(isOpen);
   const [editingId, setEditingId] = useState(null); // id de la persona que se está editando, o null
   const [loading, setLoading] = useState(true);
 
@@ -20,6 +23,7 @@ export default function PersonaPicker({ isOpen, onClose, characterId, characterN
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [lore, setLore] = useState('');
+  const [gender, setGender] = useState(null);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -35,7 +39,7 @@ export default function PersonaPicker({ isOpen, onClose, characterId, characterN
   }, [isOpen, characterId]);
 
   function resetForm() {
-    setTitle(''); setName(''); setDescription(''); setLore('');
+    setTitle(''); setName(''); setDescription(''); setLore(''); setGender(null);
   }
 
   async function persistSelection(next) {
@@ -61,7 +65,7 @@ export default function PersonaPicker({ isOpen, onClose, characterId, characterN
 
   async function handleCreatePersona() {
     if (!title.trim() || !name.trim()) return;
-    const newPersona = await window.electronAPI.personas.create({ title, name, description, lore });
+    const newPersona = await window.electronAPI.personas.create({ title, name, description, lore, gender });
     setPersonas(p => [...p, newPersona]);
     resetForm();
     setCreating(false);
@@ -78,11 +82,12 @@ export default function PersonaPicker({ isOpen, onClose, characterId, characterN
     setName(p.name || '');
     setDescription(p.description || '');
     setLore(p.lore || '');
+    setGender(p.gender || null);
   }
 
   async function handleSaveEdit() {
     if (!title.trim() || !name.trim()) return;
-    const updated = await window.electronAPI.personas.update(editingId, { title, name, description, lore });
+    const updated = await window.electronAPI.personas.update(editingId, { title, name, description, lore, gender });
     setPersonas(p => p.map(x => x.id === editingId ? updated : x));
     resetForm();
     setEditingId(null);
@@ -114,6 +119,7 @@ export default function PersonaPicker({ isOpen, onClose, characterId, characterN
           exit={{ y: '100%' }}
           transition={{ type: 'spring', damping: 28, stiffness: 300 }}
           onClick={e => e.stopPropagation()}
+          style={{ paddingBottom: keyboardInset ? keyboardInset + 16 : undefined }}
           className='w-full bg-card-bg rounded-t-3xl border-t border-white/10 p-4 max-h-[75%] overflow-y-auto'
         >
           <div className='flex items-center justify-between mb-3'>
@@ -202,6 +208,10 @@ export default function PersonaPicker({ isOpen, onClose, characterId, characterN
                         placeholder={t('persona.namePlaceholder')}
                         className='w-full bg-card-bg text-white text-sm rounded-lg px-3 py-2 border border-white/10 outline-none focus:border-accent/60'
                       />
+                      <div>
+                        <p className='text-[11px] text-gray-500 mb-1'>{t('persona.genderLabel')}</p>
+                        <GenderSelector value={gender} onChange={setGender} t={t} />
+                      </div>
                       <textarea
                         value={description}
                         onChange={e => setDescription(e.target.value)}
