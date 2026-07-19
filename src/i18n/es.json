@@ -19,9 +19,9 @@
     "newChatTooltip": "Nueva conversación",
     "keyboardHint": "Enter para enviar · Shift+Enter para nueva línea",
     "errorPrefix": "Error: ",
-    "wallpaperTooltip":	"Fondo de pantalla del chat",
-    "setWallpaper":	"Elegir imagen de fondo",
-    "removeWallpaper":	"Quitar fondo del chat",
+    "wallpaperTooltip": "Fondo de pantalla del chat",
+    "setWallpaper": "Elegir imagen de fondo",
+    "removeWallpaper": "Quitar fondo del chat",
     "contextUsage": "contexto",
     "contextUsageTooltip": "Cuánto del contexto de la conversación se está usando",
     "stop": "Parar"
@@ -43,7 +43,10 @@
     "createNew": "Crear nueva persona",
     "titlePlaceholder": "Título (ej. \"Yo en el trabajo\")",
     "namePlaceholder": "Cómo te llamará el personaje",
-    "descriptionPlaceholder": "Descripción de esta persona (quién es, cómo es...)"
+    "descriptionPlaceholder": "Descripción de esta persona (quién es, cómo es...)",
+    "lorePlaceholder": "Lore / trasfondo adicional de esta persona (opcional)",
+    "loreHint": "Información extra que el personaje debería saber sobre ti, además del nombre y la descripción.",
+    "edit": "Editar persona"
   },
   "character": {
     "new": "Nueva Lorecard",
@@ -68,7 +71,7 @@
     "language": "Idioma",
     "ai": "Ajustes IA",
     "back": "Atrás",
-    "appearance":	"Apariencia",
+    "appearance": "Apariencia",
     "backup": "Copia de seguridad",
     "backupDesc": "Tus personajes y conversaciones viven solo en este dispositivo. Si cambias de móvil o se borran los datos del navegador, los pierdes para siempre a menos que tengas una copia guardada.",
     "exportBackup": "Exportar copia (.json)",
@@ -104,7 +107,7 @@
     "dark": "Oscuro",
     "light": "Claro"
   },
-  "profile":{
+  "profile": {
     "title": "Mi Perfil",
     "IAname": "Cómo te llama la IA",
     "namePlaceholder": "Tu nombre",
@@ -112,18 +115,18 @@
     "tonePlaceholder": "casual, épico, sarcástico...",
     "autoSave": "Los cambios de perfil se guardan automaticamente"
   },
-  "ai":{
-    "key":"Llave API de DeepSeek",
-    "hint":"Obtén tu key en platform.deepseek.com",
-    "temperature":"Temperatura (creatividad):",
+  "ai": {
+    "key": "Llave API de DeepSeek",
+    "hint": "Obtén tu key en platform.deepseek.com",
+    "temperature": "Temperatura (creatividad):",
     "tempRange0": "0 — Preciso",
-    "tempRange1": "1 — Creativo", 
+    "tempRange1": "1 — Creativo",
     "tokenAnswer": "Tokens máx. por respuesta",
     "tokenContext": "Ventana de contexto (tokens)",
     "save": "Guardar configuración",
     "sucesfullSave": "Configuración guardada",
     "provider": "Proveedor IA",
-    "model":"Modelo"
+    "model": "Modelo"
   },
   "sidebar": {
     "newLorecard": "Nueva Lorecard",
@@ -131,11 +134,11 @@
     "search": "Buscar",
     "delete": "Eliminar",
     "edit": "Editar",
-    "title":"DeepSeek Roleplay",
-    "version":"DeepSeek v3 ·",
-    "characters":"personajes",
-    "lackCahracter":"No hay personajes aún.",
-    "createCharacter":"Crea uno con el botón +"
+    "title": "DeepSeek Roleplay",
+    "version": "DeepSeek v3 ·",
+    "characters": "personajes",
+    "lackCahracter": "No hay personajes aún.",
+    "createCharacter": "Crea uno con el botón +"
   },
   "characterForm": {
     "nameLabel": "Nombre",
@@ -185,15 +188,15 @@
     }
   },
   "avatarPicker": {
-  "altPreview": "Vista previa del avatar",
-  "imgRenderError": "Error al renderizar la imagen local.",
-  "title": "Avatar del personaje",
-  "subtitle": "Elige un emoji o una imagen de tu equipo",
-  "tabEmoji": "Emoji",
-  "tabImage": "Imagen",
-  "loading": "Procesando archivo...",
-  "uploadBtn": "Seleccionar archivo del equipo",
-  "disclaimer": "Soporta PNG, JPG, WEBP. Los personajes nuevos usan Base64 de forma temporal y se consolidan en disco automáticamente al guardarlos."
+    "altPreview": "Vista previa del avatar",
+    "imgRenderError": "Error al renderizar la imagen local.",
+    "title": "Avatar del personaje",
+    "subtitle": "Elige un emoji o una imagen de tu equipo",
+    "tabEmoji": "Emoji",
+    "tabImage": "Imagen",
+    "loading": "Procesando archivo...",
+    "uploadBtn": "Seleccionar archivo del equipo",
+    "disclaimer": "Soporta PNG, JPG, WEBP. Los personajes nuevos usan Base64 de forma temporal y se consolidan en disco automáticamente al guardarlos."
   },
   "characterProfile": {
     "tags": "Etiquetas",
@@ -246,7 +249,7 @@
       "greetingMsg": "💬 Mensaje Inicial",
       "secretMotivation": "🔑 Motivación Secreta"
     },
-    "regenerate":"Regenerar",
+    "regenerate": "Regenerar",
     "examples": [
       "Un pirata fantasma que busca redención",
       "Una científica loca obsesionada con el tiempo",
@@ -258,5 +261,27 @@
   "tagChips": {
     "activeFilters": "Filtros activos",
     "removeTag": "Quitar filtro"
+  },
+  "chatSettingsMenu": {
+    "title": "Ajustes del chat",
+    "persona": "Persona",
+    "personaDefault": "Perfil por defecto",
+    "scenario": "Escenario",
+    "scenarioDefault": "Del personaje",
+    "scenarioCustom": "Personalizado",
+    "lorebooks": "Lorebooks",
+    "memory": "Memoria",
+    "voice": "Voz",
+    "imageGen": "Generación de imágenes",
+    "translation": "Traducción",
+    "comingSoon": "Próx."
+  },
+  "scenarioEditor": {
+    "title": "Escenario de este chat",
+    "description": "Define un contexto distinto para esta conversación con {{name}}, sin tocar su escenario por defecto. Déjalo vacío para usar el de siempre.",
+    "placeholderWithDefault": "Vacío = usar el escenario por defecto:\n\n{{defaultScenario}}",
+    "placeholderEmpty": "Describe el contexto de este roleplay en concreto...",
+    "resetToDefault": "Volver al del personaje",
+    "save": "Guardar"
   }
 }

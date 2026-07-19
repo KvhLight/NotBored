@@ -177,12 +177,26 @@ async function createConversation(characterId) {
     characterId,
     title: 'New Conversation',
     messages: [],
+    // Escenario específico de ESTA conversación. Vacío = usar el escenario
+    // por defecto del personaje. Así el mismo personaje puede tener
+    // conversaciones distintas con contextos distintos.
+    scenarioOverride: '',
     createdAt: Date.now(),
     lastActivity: Date.now(),
   };
   convs.push(newConv);
   await persist('conversations', convs);
   return newConv;
+}
+// Guarda (o limpia, si se pasa '') el escenario propio de esta conversación,
+// sin tocar el escenario del personaje ni el de otras conversaciones.
+async function setConversationScenario(conversationId, scenario) {
+  const convs = await getAllConversations();
+  const idx = convs.findIndex(c => c.id === conversationId);
+  if (idx === -1) throw new Error('Conversation not found');
+  convs[idx].scenarioOverride = scenario?.trim() || '';
+  await persist('conversations', convs);
+  return convs[idx];
 }
 async function appendMessage(conversationId, message) {
   const convs = await getAllConversations();
@@ -303,18 +317,29 @@ async function setChatWallpaper(characterId, value) {
 async function getAllPersonas() {
   return load('personas', []);
 }
-async function createPersona({ title, name, description }) {
+async function createPersona({ title, name, description, lore }) {
   const personas = await getAllPersonas();
   const newPersona = {
     id: uuid(),
     title: title?.trim() || 'Sin título',
     name: name?.trim() || '',
     description: description?.trim() || '',
+    lore: lore?.trim() || '',
     createdAt: Date.now(),
   };
   personas.push(newPersona);
   await persist('personas', personas);
   return newPersona;
+}
+// Edita una persona ya existente (título, nombre, descripción y/o lore).
+// Solo se sobreescriben los campos presentes en `patch`.
+async function updatePersona(id, patch) {
+  const personas = await getAllPersonas();
+  const idx = personas.findIndex(p => p.id === id);
+  if (idx === -1) throw new Error('Persona not found');
+  personas[idx] = { ...personas[idx], ...patch };
+  await persist('personas', personas);
+  return personas[idx];
 }
 async function deletePersona(id) {
   await persist('personas', (await getAllPersonas()).filter(p => p.id !== id));
@@ -387,7 +412,8 @@ function buildContextWindow(messages, systemPrompt, maxTokens = 4000) {
   }
   return [systemMsg, ...ctx];
 }
-function buildCharacterSystemPrompt(character, userContextBlock) {
+function buildCharacterSystemPrompt(character, userContextBlock, scenarioOverride) {
+  const effectiveScenario = (scenarioOverride && scenarioOverride.trim()) || character.scenario || '';
   const parts = [
     '=== IDENTITY ===',
     `You are ${character.name}. You are not an AI, you are not an assistant.`,
@@ -402,7 +428,7 @@ function buildCharacterSystemPrompt(character, userContextBlock) {
     'You speak, think, and react consistently with these traits at ALL times.',
     '',
     '=== SCENARIO & WORLD ===',
-    character.scenario || '',
+    effectiveScenario,
     'You know this world intimately. Act within its logic and rules.',
     '',
     '=== AUTHOR INSTRUCTIONS ===',
@@ -479,7 +505,7 @@ async function getOllamaModels() {
   }
 }
 
-async function sendMessage({ character, history, userMessage, userContextBlock }) {
+async function sendMessage({ character, history, userMessage, userContextBlock, scenarioOverride }) {
   const settings = await getSettings();
   const { baseURL, apiKey, meta, providerId } = getProviderConfig(settings);
 
@@ -487,7 +513,7 @@ async function sendMessage({ character, history, userMessage, userContextBlock }
     listeners.error.forEach(cb => cb(`Falta la API Key de ${meta.label}. Ve a Ajustes → IA y pégala.`));
     return { success: false };
   }
-  const systemPrompt = buildCharacterSystemPrompt(character, userContextBlock);
+  const systemPrompt = buildCharacterSystemPrompt(character, userContextBlock, scenarioOverride);
   const contextMessages = buildContextWindow(history, systemPrompt, settings.maxContextTokens);
   contextMessages.push({ role: 'user', content: userMessage });
 
@@ -933,6 +959,7 @@ const webAdapter = {
     editMessage: async (convId, msgId, content) => editMessage(convId, msgId, content),
     patchMessage: async (convId, msgId, patch) => patchMessage(convId, msgId, patch),
     setMessages: async (convId, msgs) => setConversationMessages(convId, msgs),
+    setScenario: async (convId, scenario) => setConversationScenario(convId, scenario),
   },
   ai: { sendMessage, onChunk, onDone, onError, removeListeners, stopGeneration },
   settings: {
@@ -950,6 +977,7 @@ const webAdapter = {
   personas: {
     getAll: async () => getAllPersonas(),
     create: async (data) => createPersona(data),
+    update: async (id, patch) => updatePersona(id, patch),
     delete: async (id) => deletePersona(id),
     getSelection: async (charId) => getPersonaSelection(charId),
     setSelection: async (charId, sel) => setPersonaSelection(charId, sel),

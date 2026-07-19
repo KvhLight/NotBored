@@ -1,8 +1,9 @@
 import	React,	{	useState,	useEffect,	useRef	}	from	'react';
-import	{	History,	ArrowLeft,	Plus,	Send,	Loader2,	Image	as	ImageIcon,	Trash2,	X,	Square,	UserCircle2	}	from	'lucide-react';
+import	{	History,	ArrowLeft,	Plus,	Send,	Loader2,	Image	as	ImageIcon,	Trash2,	X,	Square,	UserCircle2,	Menu	}	from	'lucide-react';
 import	{	motion,	AnimatePresence	}	from	'framer-motion';
 import	MessageBubble	from	'./MessageBubble';
 import	PersonaPicker	from	'./PersonaPicker';
+import	ChatSettingsMenu	from	'./ChatSettingsMenu';
 import	{	useApp	}	from	'../context/AppContext';
 
 export	default	function	ChatWindow({	character,	conversation,	onBack,	onNewChat,	onShowSessions	})	{
@@ -21,7 +22,13 @@ export	default	function	ChatWindow({	character,	conversation,	onBack,	onNewChat,
 		const	chatWallpaper	=	getChatWallpaper(character.id);
   const [maxContextTokens, setMaxContextTokens] = useState(4000);
   const [showPersonaPicker, setShowPersonaPicker] = useState(false);
+  const [showSettingsMenu, setShowSettingsMenu] = useState(false);
   const [activePersona, setActivePersona] = useState(null); // null = usar el perfil por defecto de Ajustes
+  const [scenarioOverride, setScenarioOverride] = useState(conversation?.scenarioOverride || '');
+
+  useEffect(() => {
+    setScenarioOverride(conversation?.scenarioOverride || '');
+  }, [conversation?.id, conversation?.scenarioOverride]);
 
   async function loadActivePersona() {
     const selection = await window.electronAPI.personas.getSelection(character.id);
@@ -45,6 +52,7 @@ export	default	function	ChatWindow({	character,	conversation,	onBack,	onNewChat,
         '=== USUARIO ===',
         `El usuario se llama ${activePersona.name}.`,
         activePersona.description || '',
+        activePersona.lore ? `Contexto/lore adicional sobre el usuario: ${activePersona.lore}` : '',
         'Recuerda esta información y trátalo acorde a ella durante toda la conversación.',
       ].filter(Boolean).join('\n');
     }
@@ -159,6 +167,7 @@ export	default	function	ChatWindow({	character,	conversation,	onBack,	onNewChat,
         history,
         userMessage,
         userContextBlock: buildUserContextBlock(),
+        scenarioOverride,
       });
     } catch (err) {
       // El error llega por el listener onError, no aquí
@@ -336,6 +345,15 @@ export	default	function	ChatWindow({	character,	conversation,	onBack,	onNewChat,
         >
           <History size={18} />
         </button>
+
+        {/* Menú de ajustes del chat (persona, escenario, y lo que venga) */}
+        <button
+          onClick={() => setShowSettingsMenu(true)}
+          className='p-2 rounded-xl hover:bg-white/10 text-gray-400 hover:text-white'
+          title={t('chatSettingsMenu.title')}
+        >
+          <Menu size={18} />
+        </button>
         
           <div	className='relative'>
 										<button
@@ -491,6 +509,16 @@ export	default	function	ChatWindow({	character,	conversation,	onBack,	onNewChat,
         characterId={character.id}
         characterName={character.name}
         onChange={() => loadActivePersona()}
+      />
+
+      <ChatSettingsMenu
+        isOpen={showSettingsMenu}
+        onClose={() => setShowSettingsMenu(false)}
+        character={character}
+        conversation={{ ...conversation, scenarioOverride }}
+        activePersona={activePersona}
+        onPersonaChange={() => loadActivePersona()}
+        onScenarioChange={(newScenario) => setScenarioOverride(newScenario)}
       />
 
     </div>

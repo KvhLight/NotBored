@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Plus, Trash2, UserCircle2, Check } from 'lucide-react';
+import { X, Plus, Trash2, UserCircle2, Check, Pencil } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
 /**
@@ -13,11 +13,13 @@ export default function PersonaPicker({ isOpen, onClose, characterId, characterN
   const [personas, setPersonas] = useState([]);
   const [selection, setSelection] = useState({ enabled: false, personaId: null });
   const [creating, setCreating] = useState(false);
+  const [editingId, setEditingId] = useState(null); // id de la persona que se está editando, o null
   const [loading, setLoading] = useState(true);
 
   const [title, setTitle] = useState('');
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [lore, setLore] = useState('');
 
   useEffect(() => {
     if (!isOpen) return;
@@ -31,6 +33,10 @@ export default function PersonaPicker({ isOpen, onClose, characterId, characterN
       setLoading(false);
     });
   }, [isOpen, characterId]);
+
+  function resetForm() {
+    setTitle(''); setName(''); setDescription(''); setLore('');
+  }
 
   async function persistSelection(next) {
     setSelection(next);
@@ -55,14 +61,31 @@ export default function PersonaPicker({ isOpen, onClose, characterId, characterN
 
   async function handleCreatePersona() {
     if (!title.trim() || !name.trim()) return;
-    const newPersona = await window.electronAPI.personas.create({ title, name, description });
+    const newPersona = await window.electronAPI.personas.create({ title, name, description, lore });
     setPersonas(p => [...p, newPersona]);
-    setTitle(''); setName(''); setDescription('');
+    resetForm();
     setCreating(false);
     // Si es la primera persona creada y la persona está activada, se selecciona sola
     if (selection.enabled && !selection.personaId) {
       await persistSelection({ enabled: true, personaId: newPersona.id });
     }
+  }
+
+  function handleStartEdit(p) {
+    setEditingId(p.id);
+    setCreating(false);
+    setTitle(p.title || '');
+    setName(p.name || '');
+    setDescription(p.description || '');
+    setLore(p.lore || '');
+  }
+
+  async function handleSaveEdit() {
+    if (!title.trim() || !name.trim()) return;
+    const updated = await window.electronAPI.personas.update(editingId, { title, name, description, lore });
+    setPersonas(p => p.map(x => x.id === editingId ? updated : x));
+    resetForm();
+    setEditingId(null);
   }
 
   async function handleDeletePersona(id) {
@@ -71,6 +94,7 @@ export default function PersonaPicker({ isOpen, onClose, characterId, characterN
     if (selection.personaId === id) {
       setSelection(s => ({ ...s, personaId: null }));
     }
+    if (editingId === id) { resetForm(); setEditingId(null); }
   }
 
   if (!isOpen) return null;
@@ -148,6 +172,12 @@ export default function PersonaPicker({ isOpen, onClose, characterId, characterN
                         <div className='flex items-center gap-1 flex-shrink-0'>
                           {selection.personaId === p.id && <Check size={14} className='text-accent' />}
                           <button
+                            onClick={e => { e.stopPropagation(); handleStartEdit(p); }}
+                            className='p-1.5 rounded-lg hover:bg-white/10 text-gray-500 hover:text-white'
+                          >
+                            <Pencil size={12} />
+                          </button>
+                          <button
                             onClick={e => { e.stopPropagation(); handleDeletePersona(p.id); }}
                             className='p-1.5 rounded-lg hover:bg-white/10 text-gray-500 hover:text-red-400'
                           >
@@ -158,7 +188,7 @@ export default function PersonaPicker({ isOpen, onClose, characterId, characterN
                     ))}
                   </div>
 
-                  {creating ? (
+                  {(creating || editingId) ? (
                     <div className='space-y-2 bg-app-bg rounded-xl p-3 border border-white/10'>
                       <input
                         value={title}
@@ -179,15 +209,25 @@ export default function PersonaPicker({ isOpen, onClose, characterId, characterN
                         rows={3}
                         className='w-full bg-card-bg text-white text-sm rounded-lg px-3 py-2 border border-white/10 outline-none focus:border-accent/60 resize-none'
                       />
+                      <div>
+                        <textarea
+                          value={lore}
+                          onChange={e => setLore(e.target.value)}
+                          placeholder={t('persona.lorePlaceholder')}
+                          rows={3}
+                          className='w-full bg-card-bg text-white text-sm rounded-lg px-3 py-2 border border-white/10 outline-none focus:border-accent/60 resize-none'
+                        />
+                        <p className='text-[11px] text-gray-600 mt-1'>{t('persona.loreHint')}</p>
+                      </div>
                       <div className='flex justify-end gap-2 pt-1'>
                         <button
-                          onClick={() => setCreating(false)}
+                          onClick={() => { resetForm(); setCreating(false); setEditingId(null); }}
                           className='text-xs px-3 py-2 rounded-lg text-gray-400 hover:text-white'
                         >
                           {t('appearance.confirmNo')}
                         </button>
                         <button
-                          onClick={handleCreatePersona}
+                          onClick={editingId ? handleSaveEdit : handleCreatePersona}
                           disabled={!title.trim() || !name.trim()}
                           className='text-xs px-3 py-2 rounded-lg bg-accent text-white disabled:opacity-40'
                         >
@@ -197,7 +237,7 @@ export default function PersonaPicker({ isOpen, onClose, characterId, characterN
                     </div>
                   ) : (
                     <button
-                      onClick={() => setCreating(true)}
+                      onClick={() => { resetForm(); setCreating(true); }}
                       className='w-full flex items-center justify-center gap-2 p-3 rounded-xl border border-dashed border-white/20 text-gray-400 hover:text-white hover:border-white/40'
                     >
                       <Plus size={14} /> {t('persona.createNew')}

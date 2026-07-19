@@ -19,9 +19,9 @@
     "keyboardHint": "Enter to send · Shift+Enter for new line",
     "errorPrefix": "Error: ",
     "avatarAlt": "Avatar of {{name}}",
-    "wallpaperTooltip":	"Chat wallpaper",
-    "setWallpaper":	"Set background image",
-    "removeWallpaper":	"Remove chat wallpaper",
+    "wallpaperTooltip": "Chat wallpaper",
+    "setWallpaper": "Set background image",
+    "removeWallpaper": "Remove chat wallpaper",
     "contextUsage": "context",
     "contextUsageTooltip": "How much of the conversation's context is being used",
     "stop": "Stop"
@@ -43,7 +43,10 @@
     "createNew": "Create new persona",
     "titlePlaceholder": "Title (e.g. \"Me at work\")",
     "namePlaceholder": "What the character will call you",
-    "descriptionPlaceholder": "Description of this persona (who they are, what they're like...)"
+    "descriptionPlaceholder": "Description of this persona (who they are, what they're like...)",
+    "lorePlaceholder": "Extra lore / background for this persona (optional)",
+    "loreHint": "Extra info the character should know about you, beyond the name and description.",
+    "edit": "Edit persona"
   },
   "character": {
     "new": "New Lorecard",
@@ -69,7 +72,7 @@
     "ai": "AI Settings",
     "back": "Back",
     "sucesfullSave": "Settings saved",
-    "appearance":	"Appearance",
+    "appearance": "Appearance",
     "backup": "Backup",
     "backupDesc": "Your characters and conversations only live on this device. If you switch phones or your browser data gets cleared, you'll lose them permanently unless you have a backup saved.",
     "exportBackup": "Export backup (.json)",
@@ -80,8 +83,8 @@
     "importSuccess": "Backup restored. Restarting the app...",
     "importError": "Could not import the backup. Is it a valid file?"
   },
-  "appearance":	{
-    "themeTitle":	"Color theme",
+  "appearance": {
+    "themeTitle": "Color theme",
     "themeSubtitle": "Choose a tone...",
     "fineTune": "Fine tune the hue",
     "wallpaperTitle": "Wallpaper",
@@ -105,7 +108,7 @@
     "dark": "Dark",
     "light": "Light"
   },
-  "profile":{
+  "profile": {
     "title": "My Profile",
     "IAname": "How the AI calls you",
     "namePlaceholder": "Your name",
@@ -113,18 +116,18 @@
     "tonePlaceholder": "casual, epic, sarcastic...",
     "autoSave": "Profile changes are saved automatically."
   },
-  "ai":{
-    "key":"DeepSeek API Key",
-    "hint":"Get your key at platform.deepseek.com",
-    "temperature":"Temperature (creativity):",
+  "ai": {
+    "key": "DeepSeek API Key",
+    "hint": "Get your key at platform.deepseek.com",
+    "temperature": "Temperature (creativity):",
     "tempRange0": "0 — Precise",
-    "tempRange1": "1 — Creative", 
+    "tempRange1": "1 — Creative",
     "tokenAnswer": "Max tokens per response",
     "tokenContext": "Context window (tokens)",
     "save": "Save configuration",
     "sucesfullSave": "Configuration saved successfully",
     "provider": "AI Provider",
-    "model":"Model"
+    "model": "Model"
   },
   "sidebar": {
     "newLorecard": "New Lorecard",
@@ -132,11 +135,11 @@
     "search": "Search",
     "delete": "Delete",
     "edit": "Edit",
-    "title":"DeepSeek Roleplay",
-    "version":"DeepSeek v3 ·",
-    "characters":"Characters",
-    "lackCahracter":"There's no characters yet.",
-    "createCharacter":"Create one pressing +"
+    "title": "DeepSeek Roleplay",
+    "version": "DeepSeek v3 ·",
+    "characters": "Characters",
+    "lackCahracter": "There's no characters yet.",
+    "createCharacter": "Create one pressing +"
   },
   "characterForm": {
     "nameLabel": "Name",
@@ -160,30 +163,30 @@
     "forge": "Forge"
   },
   "sessionList": {
-        "title": "Timelines",
-        "untitled": "Untitled conversation",
-        "newConversation": "New conversation",
-        "noMessages": "No messages yet",
-        "messagesCount": "messages",
-        "emptyState": "No conversations yet",
-        "newTimelineBtn": "Start new timeline",
-        "renameTooltip": "Rename",
-        "deleteTooltip": "Delete timeline",
-        "confirmDeleteTooltip": "Confirm delete?",
-        "relativeTime": {
-            "now": "Just now",
-            "seconds": "{{count}}s ago",
-            "minute": "1 minute ago",
-            "minutes": "{{count}} minutes ago",
-            "hour": "1 hour ago",
-            "hours": "{{count}} hours ago",
-            "yesterday": "Yesterday",
-            "days": "{{count}} days ago",
-            "week": "1 week ago",
-            "weeks": "{{count}} weeks ago",
-            "month": "1 month ago",
-            "months": "{{count}} months ago"
-        }
+    "title": "Timelines",
+    "untitled": "Untitled conversation",
+    "newConversation": "New conversation",
+    "noMessages": "No messages yet",
+    "messagesCount": "messages",
+    "emptyState": "No conversations yet",
+    "newTimelineBtn": "Start new timeline",
+    "renameTooltip": "Rename",
+    "deleteTooltip": "Delete timeline",
+    "confirmDeleteTooltip": "Confirm delete?",
+    "relativeTime": {
+      "now": "Just now",
+      "seconds": "{{count}}s ago",
+      "minute": "1 minute ago",
+      "minutes": "{{count}} minutes ago",
+      "hour": "1 hour ago",
+      "hours": "{{count}} hours ago",
+      "yesterday": "Yesterday",
+      "days": "{{count}} days ago",
+      "week": "1 week ago",
+      "weeks": "{{count}} weeks ago",
+      "month": "1 month ago",
+      "months": "{{count}} months ago"
+    }
   },
   "avatarPicker": {
     "altPreview": "Avatar preview",
@@ -259,5 +262,27 @@
   "tagChips": {
     "activeFilters": "Active filters",
     "removeTag": "Remove filter"
+  },
+  "chatSettingsMenu": {
+    "title": "Chat Settings",
+    "persona": "Persona",
+    "personaDefault": "Default profile",
+    "scenario": "Scenario",
+    "scenarioDefault": "Character's default",
+    "scenarioCustom": "Custom",
+    "lorebooks": "Lorebooks",
+    "memory": "Memory",
+    "voice": "Voice",
+    "imageGen": "Image Generation",
+    "translation": "Translation",
+    "comingSoon": "Soon"
+  },
+  "scenarioEditor": {
+    "title": "This chat's scenario",
+    "description": "Set a different context for this conversation with {{name}}, without changing their default scenario. Leave empty to use the usual one.",
+    "placeholderWithDefault": "Empty = use the default scenario:\n\n{{defaultScenario}}",
+    "placeholderEmpty": "Describe the context of this specific roleplay...",
+    "resetToDefault": "Reset to character's default",
+    "save": "Save"
   }
 }
