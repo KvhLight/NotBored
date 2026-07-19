@@ -279,7 +279,7 @@ export	default	function	ChatWindow({	character,	conversation,	onBack,	onNewChat,
 		>
       
       {/* Header */}
-      <div className='flex items-center gap-3 px-4 pt-12 pb-3 bg-gradient-to-b from-card-bg to-transparent border-b border-white/5'>
+      <div className='flex items-center gap-3 px-4 pt-12 pb-3 bg-card-bg border-b border-white/5'>
         <button 
           onClick={onBack}
           className='p-2 rounded-xl hover:bg-white/10 text-gray-400 hover:text-white'

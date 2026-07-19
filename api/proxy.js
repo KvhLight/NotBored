@@ -2,11 +2,15 @@
 // api/proxy.js
 //
 // Equivalente a netlify/functions/proxy.js pero en el formato que espera
-// Vercel (Edge Function). Misma lógica exacta, solo cambia la "envoltura":
-// Vercel detecta automáticamente cualquier archivo dentro de /api y lo
-// expone en esa misma ruta, así que este archivo queda accesible en
+// Vercel. Vercel detecta automáticamente cualquier archivo dentro de /api y
+// lo expone en esa misma ruta, así que este archivo queda accesible en
 // /api/proxy — igual que en Netlify. El frontend (webAdapter.js) no necesita
 // ningún cambio porque ya llama a la ruta relativa '/api/proxy'.
+//
+// Se exporta como POST (método HTTP con nombre) porque así es como el
+// runtime Node.js de Vercel espera la firma "Request/Response" moderna;
+// con 'export default' interpreta la firma antigua (req, res) y el
+// return se ignora en silencio.
 // ============================================================================
 
 // Node.js (no 'edge'): las funciones Edge de Vercel tienen un límite duro de
@@ -24,7 +28,7 @@ const ALLOWED_HOSTS = [
   'api.cerebras.ai',
 ];
 
-export default async function handler(req) {
+export async function POST(req) {
   if (req.method !== 'POST') {
     return new Response('Method not allowed', { status: 405 });
   }

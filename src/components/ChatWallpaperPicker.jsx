@@ -41,7 +41,7 @@ export default function ChatWallpaperPicker({ isOpen, onClose, characterId }) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className='absolute inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end'
+        className='absolute inset-0 z-50 bg-black/80 flex items-end'
         onClick={onClose}
       >
         <motion.div
