@@ -120,7 +120,7 @@ export default function SettingsModal({ onClose }) {
 			const	filePath	=	await	window.electronAPI.image.selectFile();
 			if	(!filePath)	{	setWallpaperLoading(false);	return;	}
 			const	dataUri	=	await	window.electronAPI.image.toBase64(filePath);
-			setAppWallpaperPreview(dataUri);
+			setWallpaperPreview(dataUri);
 			//	Nota:	se	aplica	vía	estado	global	en	AppContext	(ver	sección	7.2),
 			//	aquí	solo	persistimos.
 		}	catch	(err)	{

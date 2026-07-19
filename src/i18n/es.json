@@ -274,7 +274,10 @@
     "voice": "Voz",
     "imageGen": "Generación de imágenes",
     "translation": "Traducción",
-    "comingSoon": "Próx."
+    "comingSoon": "Próx.",
+    "wallpaper": "Fondo de pantalla",
+    "wallpaperActive": "Activo",
+    "wallpaperInactive": "Sin fondo"
   },
   "scenarioEditor": {
     "title": "Escenario de este chat",

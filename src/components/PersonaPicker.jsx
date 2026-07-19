@@ -144,7 +144,7 @@ export default function PersonaPicker({ isOpen, onClose, characterId, characterN
                   onClick={handleToggleEnabled}
                   className={`w-11 h-6 rounded-full flex-shrink-0 transition-colors relative ${selection.enabled ? 'bg-accent' : 'bg-gray-700'}`}
                 >
-                  <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full transition-transform ${selection.enabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                  <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${selection.enabled ? 'translate-x-5' : 'translate-x-0'}`} />
                 </button>
               </div>
 

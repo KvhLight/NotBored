@@ -1,5 +1,5 @@
 import	React,	{	useState,	useEffect,	useRef	}	from	'react';
-import	{	History,	ArrowLeft,	Plus,	Send,	Loader2,	Image	as	ImageIcon,	Trash2,	X,	Square,	UserCircle2,	Menu	}	from	'lucide-react';
+import	{	History,	ArrowLeft,	Plus,	Send,	Loader2,	X,	Square,	UserCircle2,	Menu	}	from	'lucide-react';
 import	{	motion,	AnimatePresence	}	from	'framer-motion';
 import	MessageBubble	from	'./MessageBubble';
 import	PersonaPicker	from	'./PersonaPicker';
@@ -12,9 +12,7 @@ export	default	function	ChatWindow({	character,	conversation,	onBack,	onNewChat,
 		const	[isStreaming,	setIsStreaming]	=	useState(false);
 		const	[streamBuffer,	setStreamBuffer]	=	useState('');
 		const	[error,	setError]	=	useState(null);
-		const	[showWallpaperMenu,	setShowWallpaperMenu]	=	useState(false);
-		const	[wallpaperLoading,	setWallpaperLoading]	=	useState(false);
-		const	{	t,	getChatWallpaper,	saveChatWallpaper,	getUserContextBlock	}	=	useApp();
+		const	{	t,	getChatWallpaper,	getUserContextBlock	}	=	useApp();
 		const	bottomRef	=	useRef(null);
 		const	inputRef	=	useRef(null);
 		const	pendingAiMsgId	=	useRef(null);
@@ -274,25 +272,6 @@ export	default	function	ChatWindow({	character,	conversation,	onBack,	onNewChat,
     await requestAiResponse(withoutLast, lastUserMsg.content);
   }
 
-  async	function	handleSelectChatWallpaper()	{
-		setWallpaperLoading(true);
-		try	{
-  		const	filePath	=	await	window.electronAPI.image.selectFile();
-			if	(!filePath)	{	setWallpaperLoading(false);	return;	}
-		  	const	dataUri	=	await	window.electronAPI.image.toBase64(filePath);
-				await	saveChatWallpaper(character.id,	dataUri);
-		}	catch	(err)	{
-			setError(err.message);
-		}	finally	{
-			setWallpaperLoading(false);
-			setShowWallpaperMenu(false);
-		}
-	}
-	async	function	handleClearChatWallpaper()	{
-		await	saveChatWallpaper(character.id,	null);
-		setShowWallpaperMenu(false);
-	}
-
   return	(
 		<div
 			className={`flex	flex-col	h-full	relative	bg-app-bg	${chatWallpaper	?	'chat-wallpaper-layer'	:	''}`}
@@ -346,7 +325,7 @@ export	default	function	ChatWindow({	character,	conversation,	onBack,	onNewChat,
           <History size={18} />
         </button>
 
-        {/* Menú de ajustes del chat (persona, escenario, y lo que venga) */}
+        {/* Menú de ajustes del chat (persona, escenario, wallpaper, y lo que venga) */}
         <button
           onClick={() => setShowSettingsMenu(true)}
           className='p-2 rounded-xl hover:bg-white/10 text-gray-400 hover:text-white'
@@ -354,48 +333,6 @@ export	default	function	ChatWindow({	character,	conversation,	onBack,	onNewChat,
         >
           <Menu size={18} />
         </button>
-        
-          <div	className='relative'>
-										<button
-												onClick={()	=>	setShowWallpaperMenu(p	=>	!p)}
-												className='p-2	rounded-xl	hover:bg-white/10	text-gray-400	hover:text-white'
-												title={t('chat.wallpaperTooltip')}
-										>
-												<ImageIcon	size={18}	/>
-										</button>
-										<AnimatePresence>
-												{showWallpaperMenu	&&	(
-														<motion.div
-																initial={{	opacity:	0,	y:	8,	scale:	0.95	}}
-																animate={{	opacity:	1,	y:	0,	scale:	1	}}
-																exit={{	opacity:	0,	y:	8,	scale:	0.95	}}
-																transition={{	duration:	0.15	}}
-																className='absolute	top-12	right-0	w-52	bg-card-bg	border	border-white/10
-																rounded-2xl	overflow-hidden	shadow-2xl	shadow-black/50	z-30'
-														>
-																<button
-																		disabled={wallpaperLoading}
-																		onClick={handleSelectChatWallpaper}
-																		className='w-full	flex	items-center	gap-2	px-4	py-3	text-left	text-sm
-																		text-gray-200	hover:bg-white/5	transition-colors	disabled:opacity-50'
-																>
-																		<ImageIcon	size={14}	className='text-accent'	/>
-																		{wallpaperLoading	?	t('appearance.loading')	:	t('chat.setWallpaper')}
-																</button>
-																{chatWallpaper	&&	(
-																		<button
-																				onClick={handleClearChatWallpaper}
-																				className='w-full	flex	items-center	gap-2	px-4	py-3	text-left	text-sm
-																				text-red-400	hover:bg-red-500/10	transition-colors	border-t	border-white/5'
-																		>
-																				<Trash2	size={14}	/>
-																				{t('chat.removeWallpaper')}
-																		</button>
-																)}
-														</motion.div>
-												)}
-										</AnimatePresence>
-								</div>
 
         <button 
           onClick={onNewChat}

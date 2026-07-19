@@ -2,11 +2,12 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, ChevronRight, UserCircle2, MapPinned, BookMarked,
-  Brain, Mic2, ImagePlus, Languages,
+  Brain, Mic2, ImagePlus, Languages, Image as ImageIcon,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import PersonaPicker from './PersonaPicker';
 import ScenarioEditor from './ScenarioEditor';
+import ChatWallpaperPicker from './ChatWallpaperPicker';
 
 /**
  * Menú de ajustes del chat, en formato de lista escalable (inspirado en el
@@ -25,10 +26,12 @@ export default function ChatSettingsMenu({
   onPersonaChange,
   onScenarioChange,
 }) {
-  const { t } = useApp();
-  const [subPanel, setSubPanel] = useState(null); // 'persona' | 'scenario' | null
+  const { t, getChatWallpaper } = useApp();
+  const [subPanel, setSubPanel] = useState(null); // 'persona' | 'scenario' | 'wallpaper' | null
 
   if (!isOpen) return null;
+
+  const hasWallpaper = !!getChatWallpaper(character.id);
 
   const ROWS = [
     {
@@ -46,6 +49,13 @@ export default function ChatSettingsMenu({
         ? t('chatSettingsMenu.scenarioCustom')
         : t('chatSettingsMenu.scenarioDefault'),
       onClick: () => setSubPanel('scenario'),
+    },
+    {
+      key: 'wallpaper',
+      icon: ImageIcon,
+      label: t('chatSettingsMenu.wallpaper'),
+      value: hasWallpaper ? t('chatSettingsMenu.wallpaperActive') : t('chatSettingsMenu.wallpaperInactive'),
+      onClick: () => setSubPanel('wallpaper'),
     },
     // --- Próximamente: añadir aquí siguiendo el mismo patrón ---
     { key: 'lorebooks', icon: BookMarked, label: t('chatSettingsMenu.lorebooks'), disabled: true },
@@ -124,6 +134,12 @@ export default function ChatSettingsMenu({
         character={character}
         conversation={conversation}
         onSave={onScenarioChange}
+      />
+
+      <ChatWallpaperPicker
+        isOpen={subPanel === 'wallpaper'}
+        onClose={() => setSubPanel(null)}
+        characterId={character.id}
       />
     </AnimatePresence>
   );

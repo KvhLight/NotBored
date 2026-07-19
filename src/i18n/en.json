@@ -275,7 +275,10 @@
     "voice": "Voice",
     "imageGen": "Image Generation",
     "translation": "Translation",
-    "comingSoon": "Soon"
+    "comingSoon": "Soon",
+    "wallpaper": "Wallpaper",
+    "wallpaperActive": "Active",
+    "wallpaperInactive": "None"
   },
   "scenarioEditor": {
     "title": "This chat's scenario",
