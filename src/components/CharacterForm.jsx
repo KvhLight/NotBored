@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, Save } from 'lucide-react';
 import AvatarPicker from './AvatarPicker';
 import { useApp } from '../context/AppContext';
+import useKeyboardInset from '../hooks/useKeyboardInset';
 
 
 const FIELD_CONFIG = [
@@ -31,6 +32,7 @@ export default function CharacterForm({ character, characters, onSave, onCancel,
   const [errors, setErrors] = useState({});
   const [tagSuggestions, setTagSuggestions] = useState([]);
   const { t } = useApp();
+  const keyboardInset = useKeyboardInset(true);
 
   const allTags = [
     ...new Set(
@@ -99,7 +101,10 @@ export default function CharacterForm({ character, characters, onSave, onCancel,
         </button>
       </div>
 
-      <div className='flex-1 overflow-y-auto px-4 py-4 space-y-4'>
+      <div
+        className='flex-1 overflow-y-auto px-4 py-4 space-y-4'
+        style={{ paddingBottom: keyboardInset ? keyboardInset + 24 : undefined }}
+      >
         
         {/* Avatar Picker */}
         <AvatarPicker 

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Wand2, Save, RefreshCw, Loader2, ChevronDown, ChevronUp, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '../context/AppContext'; 
+import useKeyboardInset from '../hooks/useKeyboardInset';
 
 const IDEA_EXAMPLES = [
   'Un pirata fantasma que busca redención',
@@ -20,6 +21,7 @@ export default function ForgePanel({ creationMode,
   const [expandedField, setExpandedField] = useState(null);
   const [saving, setSaving] = useState(false);
   const { t } = useApp(); 
+  const keyboardInset = useKeyboardInset(true);
   
   const previewFields = [
     { key: 'description', label: t('forge.fields.description') },
@@ -85,7 +87,10 @@ export default function ForgePanel({ creationMode,
         {/* Espaciador para mantener el título centrado */}
         <div className='w-10' />
       </div>
-      <div className='flex-1 overflow-y-auto px-4 py-4 space-y-4 hidden-scrollbar'>
+      <div
+        className='flex-1 overflow-y-auto px-4 py-4 space-y-4 hidden-scrollbar'
+        style={{ paddingBottom: keyboardInset ? keyboardInset + 24 : undefined }}
+      >
         
         {/* Input de idea */}
         <div className='space-y-2'>
@@ -228,7 +233,7 @@ export default function ForgePanel({ creationMode,
           )}
         </AnimatePresence>
         
-        <div className='h-6' />
+        <div className='h-24' />
       </div>
     </div>
   );
