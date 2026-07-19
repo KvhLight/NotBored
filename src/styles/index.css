@@ -109,7 +109,7 @@
     opacity:	0.35;	/*	la	imagen	no	debe	competir	con	la	legibilidad	de	los	mensajes	*/
     z-index:	0;
   }
-  .chat-wallpaper-layer	>	*	{
+  .chat-wallpaper-layer	.chat-content-layer	{
     position:	relative;
     z-index: 1;
   }

@@ -277,7 +277,7 @@ export	default	function	ChatWindow({	character,	conversation,	onBack,	onNewChat,
 			className={`flex	flex-col	h-full	relative	bg-app-bg	${chatWallpaper	?	'chat-wallpaper-layer'	:	''}`}
 			style={chatWallpaper	?	{	backgroundImage:	`url(${chatWallpaper})`	}	:	undefined}
 		>
-      
+      <div className='chat-content-layer flex flex-col h-full'>
       {/* Header */}
       <div className='flex items-center gap-3 px-4 pt-12 pb-3 bg-card-bg border-b border-white/5'>
         <button 
@@ -438,6 +438,7 @@ export	default	function	ChatWindow({	character,	conversation,	onBack,	onNewChat,
         <p className='text-center text-xs text-gray-700 mt-2'>
           {t('chat.keyboardHint')}
         </p>
+      </div>
       </div>
 
       <PersonaPicker

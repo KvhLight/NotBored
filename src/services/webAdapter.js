@@ -535,6 +535,7 @@ async function sendMessage({ character, history, userMessage, userContextBlock, 
       generationConfig: {
         temperature: settings.temperature || 0.85,
         maxOutputTokens: settings.maxTokens || 1000,
+        thinkingConfig: { thinkingLevel: 'low' },
       },
     };
   } else {
@@ -637,7 +638,7 @@ async function sendMessage({ character, history, userMessage, userContextBlock, 
  *
  * providerId es opcional: si no se pasa, usa el proveedor activo en Ajustes.
  */
-export async function callAIOnce({ systemPrompt, userPrompt, temperature = 0.8, maxTokens = 800, providerId: forcedProviderId } = {}) {
+export async function callAIOnce({ systemPrompt, userPrompt, temperature = 0.8, maxTokens = 3000, providerId: forcedProviderId } = {}) {
   const settings = await getSettings();
   if (forcedProviderId) settings.provider = forcedProviderId;
   const { baseURL, apiKey, meta, providerId } = getProviderConfig(settings);
@@ -655,7 +656,15 @@ export async function callAIOnce({ systemPrompt, userPrompt, temperature = 0.8, 
     body = {
       contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
       systemInstruction: { parts: [{ text: systemPrompt }] },
-      generationConfig: { temperature, maxOutputTokens: maxTokens },
+      generationConfig: {
+        temperature,
+        maxOutputTokens: maxTokens,
+        // Gemini 3.x no permite desactivar el "pensamiento" del todo, pero
+        // con 'low' se reduce al mínimo — así consume menos del mismo
+        // límite de tokens que la respuesta visible (maxOutputTokens),
+        // dejando más margen para el JSON real antes de cortarse.
+        thinkingConfig: { thinkingLevel: 'low' },
+      },
     };
   } else {
     url = `${baseURL}/chat/completions`;
@@ -753,7 +762,7 @@ You MUST respond using this exact JSON structure:
   // maxTokens generoso: la ficha completa (8 campos, varios de ellos con
   // varias frases) no cabe en 800 tokens — se cortaba a mitad de generación
   // y el JSON quedaba inválido ("unterminated string").
-  const result = await callAIOnce({ systemPrompt, userPrompt, temperature: 0.95, maxTokens: 2000 });
+  const result = await callAIOnce({ systemPrompt, userPrompt, temperature: 0.95, maxTokens: 3000 });
   if (!result.success) return { success: false, error: result.error };
 
   try {
