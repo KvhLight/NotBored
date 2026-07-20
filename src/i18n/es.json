@@ -24,7 +24,8 @@
     "removeWallpaper": "Quitar fondo del chat",
     "contextUsage": "contexto",
     "contextUsageTooltip": "Cuánto del contexto de la conversación se está usando",
-    "stop": "Parar"
+    "stop": "Parar",
+    "continue": "Continuar"
   },
   "messageActions": {
     "edit": "Editar",
@@ -33,6 +34,23 @@
     "copy": "Copiar",
     "copied": "¡Copiado!",
     "deleteFrom": "Borrar desde aquí (y lo posterior)"
+  },
+  "memory": {
+    "title": "Memoria",
+    "usage": "Uso de recuerdos",
+    "autoToggle": "Generar recuerdos automáticamente",
+    "autoToggleSubtitle": "Se crean solos según avanza la conversación",
+    "generateNow": "Actualizar recuerdos ahora",
+    "generating": "Generando...",
+    "generateError": "No se pudieron generar los recuerdos.",
+    "emptyState": "Todavía no hay recuerdos en esta conversación.",
+    "aboutUser": "Sobre mí",
+    "aboutCharacter": "Sobre él/ella",
+    "aboutBoth": "Sobre ambos",
+    "autoTag": "auto",
+    "addManual": "Añadir recuerdo",
+    "addPlaceholder": "Escribe el recuerdo...",
+    "autoPopup": "💭 Se han añadido nuevos recuerdos a esta conversación"
   },
   "persona": {
     "title": "¿Quién eres tú?",
@@ -160,6 +178,15 @@
     "greetingPlaceholder": "Primer mensaje al iniciar el chat...",
     "tagsLabel": "Etiquetas (separadas por coma)",
     "tagsPlaceholder": "fantasia, elfo, mago",
+    "advancedTitle": "⚙️ Avanzado",
+    "advancedSubtitle": "Reglas puntuales que tienen prioridad sobre la personalidad general si contradicen algo.",
+    "writingStyleLabel": "Estilo de escritura",
+    "writingStylePlaceholder": "Ej: frases cortas, usa muchos emojis, nunca usa mayúsculas...",
+    "rulesLabel": "Reglas de comportamiento",
+    "ruleNumber": "Regla {{n}}",
+    "ruleTriggerPlaceholder": "Cuando el tema sea... (ej: política, su pasado, dinero)",
+    "ruleBehaviorPlaceholder": "Cómo debe reaccionar o qué debe responder",
+    "addRule": "Añadir regla",
     "nsfwTitle": "Contenido NSFW",
     "nsfwSubtitle": "Habilita temáticas adultas",
     "nameRequired": "El nombre es obligatorio",

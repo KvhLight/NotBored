@@ -1,10 +1,12 @@
 import	React,	{	useState,	useEffect,	useRef	}	from	'react';
-import	{	History,	ArrowLeft,	Plus,	Send,	Loader2,	X,	Square,	UserCircle2,	Menu	}	from	'lucide-react';
+import	{	History,	ArrowLeft,	Plus,	Send,	Loader2,	X,	Square,	UserCircle2,	Menu,	SkipForward	}	from	'lucide-react';
 import	{	motion,	AnimatePresence	}	from	'framer-motion';
 import	MessageBubble	from	'./MessageBubble';
 import	PersonaPicker	from	'./PersonaPicker';
 import	ChatSettingsMenu	from	'./ChatSettingsMenu';
 import	{	useApp	}	from	'../context/AppContext';
+import { generateMemories } from '../services/memoryAnalysis';
+import { buildMemoriesBlock } from '../services/webAdapter';
 
 export	default	function	ChatWindow({	character,	conversation,	onBack,	onNewChat,	onShowSessions	})	{
 		const	[messages,	setMessages]	=	useState(conversation.messages	||	[]);
@@ -16,7 +18,17 @@ export	default	function	ChatWindow({	character,	conversation,	onBack,	onNewChat,
 		const	bottomRef	=	useRef(null);
 		const	inputRef	=	useRef(null);
 		const	pendingAiMsgId	=	useRef(null);
+  const messagesRef = useRef(messages);
+  useEffect(() => { messagesRef.current = messages; }, [messages]);
+  const [memoryPopup, setMemoryPopup] = useState(false);
+  const [variants, setVariants] = useState([]); // respuestas alternativas del último mensaje de la IA (solo en memoria)
+  const [variantIndex, setVariantIndex] = useState(0);
+  const regeneratingRef = useRef(false);
 		const	convId	=	conversation.id;
+  useEffect(() => {
+    setVariants([]);
+    setVariantIndex(0);
+  }, [convId]);
 		const	chatWallpaper	=	getChatWallpaper(character.id);
   const [maxContextTokens, setMaxContextTokens] = useState(4000);
   const [showPersonaPicker, setShowPersonaPicker] = useState(false);
@@ -98,6 +110,23 @@ export	default	function	ChatWindow({	character,	conversation,	onBack,	onNewChat,
   useEffect(() => {
     let chunkCount = 0;
 
+    async function maybeAutoGenerateMemories(finalMessages) {
+      try {
+        const settings = await window.electronAPI.settings.get();
+        if (settings.autoMemoryEnabled === false) return;
+        const interval = settings.autoMemoryInterval || 10;
+        const lastCount = await window.electronAPI.conversations.getLastMemoryMessageCount(convId);
+        if (finalMessages.length - lastCount < interval) return;
+
+        const result = await generateMemories({ conversationId: convId, character, messages: finalMessages });
+        if (result.success && result.added.length > 0) {
+          setMemoryPopup(true);
+        }
+      } catch {
+        // si falla la generación automática, no interrumpimos el chat por ello
+      }
+    }
+
     window.electronAPI.ai.onChunk(chunk => {
       setStreamBuffer(prev => {
         const next = prev + chunk;
@@ -114,9 +143,14 @@ export	default	function	ChatWindow({	character,	conversation,	onBack,	onNewChat,
     });
 
     window.electronAPI.ai.onDone(async () => {
+      let capturedContent = '';
+      let capturedMsgId = null;
+
       setStreamBuffer(prev => {
         const fullContent = prev;
         const msgId = pendingAiMsgId.current;
+        capturedContent = fullContent;
+        capturedMsgId = msgId;
 
         setMessages(m => [...m, {
           id: msgId,
@@ -130,9 +164,23 @@ export	default	function	ChatWindow({	character,	conversation,	onBack,	onNewChat,
           window.electronAPI.conversations.patchMessage(convId, msgId, { content: fullContent, pending: false });
         }
         pendingAiMsgId.current = null;
+
+        if (regeneratingRef.current) {
+          regeneratingRef.current = false;
+          setVariants(prevVariants => {
+            const updated = [...prevVariants, fullContent];
+            setVariantIndex(updated.length - 1);
+            return updated;
+          });
+        }
         return '';
       });
       setIsStreaming(false);
+      maybeAutoGenerateMemories([...messagesRef.current, {
+        id: capturedMsgId,
+        role: 'assistant',
+        content: capturedContent,
+      }]);
     });
 
     window.electronAPI.ai.onError(errMsg => {
@@ -159,6 +207,8 @@ export	default	function	ChatWindow({	character,	conversation,	onBack,	onNewChat,
     await window.electronAPI.conversations.patchMessage(convId, placeholder.id, { pending: true });
     pendingAiMsgId.current = placeholder.id;
 
+    const memories = await window.electronAPI.conversations.getMemories(convId);
+
     try {
       await window.electronAPI.ai.sendMessage({
         character,
@@ -166,6 +216,7 @@ export	default	function	ChatWindow({	character,	conversation,	onBack,	onNewChat,
         userMessage,
         userContextBlock: buildUserContextBlock(),
         scenarioOverride,
+        memoriesBlock: buildMemoriesBlock(memories),
       });
     } catch (err) {
       // El error llega por el listener onError, no aquí
@@ -177,6 +228,8 @@ export	default	function	ChatWindow({	character,	conversation,	onBack,	onNewChat,
     if (!text || isStreaming) return;
 
     setInputText('');
+    setVariants([]);
+    setVariantIndex(0);
 
     // Agregar mensaje del usuario a la UI
     const userMsg = { 
@@ -261,15 +314,41 @@ export	default	function	ChatWindow({	character,	conversation,	onBack,	onNewChat,
     const lastMsg = messages[messages.length - 1];
     if (!lastMsg || lastMsg.role !== 'assistant') return;
 
-    // Quitar la última respuesta de la IA y volver a pedirla
-    await window.electronAPI.conversations.deleteMessage?.(convId, lastMsg.id);
     const withoutLast = messages.slice(0, -1);
-    setMessages(withoutLast);
-
     const lastUserMsg = withoutLast[withoutLast.length - 1];
     if (!lastUserMsg || lastUserMsg.role !== 'user') return;
 
+    // La primera vez que regeneras esta respuesta, guardamos la actual como
+    // variante 0 — así luego se puede volver a ella deslizando/con flechas
+    setVariants(prev => (prev.length > 0 ? prev : [lastMsg.content]));
+    regeneratingRef.current = true;
+
+    await window.electronAPI.conversations.deleteMessage?.(convId, lastMsg.id);
+    setMessages(withoutLast);
+
     await requestAiResponse(withoutLast, lastUserMsg.content);
+  }
+
+  // Navegar entre las variantes de la última respuesta (sin volver a
+  // generar nada — solo cambia cuál se muestra y se guarda como la actual)
+  function goToVariant(newIndex) {
+    if (newIndex < 0 || newIndex >= variants.length) return;
+    const lastMsg = messages[messages.length - 1];
+    if (!lastMsg) return;
+    const content = variants[newIndex];
+    setVariantIndex(newIndex);
+    setMessages(m => m.map((msg, i) => (i === m.length - 1 ? { ...msg, content } : msg)));
+    window.electronAPI.conversations.patchMessage(convId, lastMsg.id, { content });
+  }
+
+  // Botón "Continuar": le pide a la IA que siga la escena sin que el
+  // usuario tenga que escribir/enviar nada — no se guarda ningún mensaje
+  // de usuario, solo se le añade una instrucción invisible a la llamada
+  async function handleContinue() {
+    if (isStreaming || messages.length === 0) return;
+    setVariants([]);
+    setVariantIndex(0);
+    await requestAiResponse(messages, '*(Continúa la escena de forma natural — el usuario no tiene nada nuevo que añadir por ahora)*');
   }
 
   return	(
@@ -343,6 +422,15 @@ export	default	function	ChatWindow({	character,	conversation,	onBack,	onNewChat,
         </button>
       </div>
 
+      {memoryPopup && (
+        <div className='mx-4 mt-2 flex items-center gap-2 bg-accent/15 border border-accent/30 rounded-xl px-3 py-2'>
+          <span className='text-xs flex-1 text-white'>{t('memory.autoPopup')}</span>
+          <button onClick={() => setMemoryPopup(false)} className='text-gray-400 hover:text-white p-0.5'>
+            <X size={13} />
+          </button>
+        </div>
+      )}
+
       {/* Messages Area */}
       <div className='flex-1 overflow-y-auto px-4 py-4 space-y-3'>
         <AnimatePresence initial={false}>
@@ -357,6 +445,11 @@ export	default	function	ChatWindow({	character,	conversation,	onBack,	onNewChat,
               onDeleteFrom={msg.role === 'user' ? handleDeleteFromHere : undefined}
               onEdit={handleEditMessage}
               onRegenerate={msg.role === 'assistant' ? handleRegenerate : undefined}
+              variantInfo={
+                i === messages.length - 1 && variants.length > 1
+                  ? { index: variantIndex, total: variants.length, onPrev: () => goToVariant(variantIndex - 1), onNext: () => goToVariant(variantIndex + 1) }
+                  : undefined
+              }
             />
           ))}
 
@@ -422,15 +515,17 @@ export	default	function	ChatWindow({	character,	conversation,	onBack,	onNewChat,
           />
           
           <button 
-            onClick={isStreaming ? handleStop : sendMessage} 
-            disabled={!isStreaming && !inputText.trim()}
+            onClick={isStreaming ? handleStop : (inputText.trim() ? sendMessage : handleContinue)} 
+            disabled={!isStreaming && !inputText.trim() && messages.length === 0}
             className='p-2.5 bg-accent rounded-xl text-white disabled:opacity-40 hover:bg-accent/80 transition-colors flex-shrink-0'
-            title={isStreaming ? t('chat.stop') : undefined}
+            title={isStreaming ? t('chat.stop') : (!inputText.trim() ? t('chat.continue') : undefined)}
           >
             {isStreaming ? (
               <Square size={16} />
-            ) : (
+            ) : inputText.trim() ? (
               <Send size={16} />
+            ) : (
+              <SkipForward size={16} />
             )}
           </button>
         </div>
@@ -457,6 +552,7 @@ export	default	function	ChatWindow({	character,	conversation,	onBack,	onNewChat,
         activePersona={activePersona}
         onPersonaChange={() => loadActivePersona()}
         onScenarioChange={(newScenario) => setScenarioOverride(newScenario)}
+        messages={messages}
       />
 
     </div>

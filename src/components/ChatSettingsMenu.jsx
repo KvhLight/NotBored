@@ -8,6 +8,7 @@ import { useApp } from '../context/AppContext';
 import PersonaPicker from './PersonaPicker';
 import ScenarioEditor from './ScenarioEditor';
 import ChatWallpaperPicker from './ChatWallpaperPicker';
+import MemoryPanel from './MemoryPanel';
 
 /**
  * Menú de ajustes del chat, en formato de lista escalable (inspirado en el
@@ -25,6 +26,7 @@ export default function ChatSettingsMenu({
   activePersona,
   onPersonaChange,
   onScenarioChange,
+  messages,
 }) {
   const { t, getChatWallpaper } = useApp();
   const [subPanel, setSubPanel] = useState(null); // 'persona' | 'scenario' | 'wallpaper' | null
@@ -57,9 +59,14 @@ export default function ChatSettingsMenu({
       value: hasWallpaper ? t('chatSettingsMenu.wallpaperActive') : t('chatSettingsMenu.wallpaperInactive'),
       onClick: () => setSubPanel('wallpaper'),
     },
+    {
+      key: 'memory',
+      icon: Brain,
+      label: t('chatSettingsMenu.memory'),
+      onClick: () => setSubPanel('memory'),
+    },
     // --- Próximamente: añadir aquí siguiendo el mismo patrón ---
     { key: 'lorebooks', icon: BookMarked, label: t('chatSettingsMenu.lorebooks'), disabled: true },
-    { key: 'memory', icon: Brain, label: t('chatSettingsMenu.memory'), disabled: true },
     { key: 'voice', icon: Mic2, label: t('chatSettingsMenu.voice'), disabled: true },
     { key: 'imageGen', icon: ImagePlus, label: t('chatSettingsMenu.imageGen'), disabled: true },
     { key: 'translation', icon: Languages, label: t('chatSettingsMenu.translation'), disabled: true },
@@ -142,6 +149,14 @@ export default function ChatSettingsMenu({
         isOpen={subPanel === 'wallpaper'}
         onClose={() => setSubPanel(null)}
         characterId={character.id}
+      />
+
+      <MemoryPanel
+        isOpen={subPanel === 'memory'}
+        onClose={() => setSubPanel(null)}
+        conversationId={conversation.id}
+        character={character}
+        messages={messages}
       />
     </AnimatePresence>
   );

@@ -24,7 +24,8 @@
     "removeWallpaper": "Remove chat wallpaper",
     "contextUsage": "context",
     "contextUsageTooltip": "How much of the conversation's context is being used",
-    "stop": "Stop"
+    "stop": "Stop",
+    "continue": "Continue"
   },
   "messageActions": {
     "edit": "Edit",
@@ -33,6 +34,23 @@
     "copy": "Copy",
     "copied": "Copied!",
     "deleteFrom": "Delete from here (and after)"
+  },
+  "memory": {
+    "title": "Memory",
+    "usage": "Memory usage",
+    "autoToggle": "Generate memories automatically",
+    "autoToggleSubtitle": "Created on their own as the conversation goes on",
+    "generateNow": "Update memories now",
+    "generating": "Generating...",
+    "generateError": "Couldn't generate memories.",
+    "emptyState": "No memories yet in this conversation.",
+    "aboutUser": "About me",
+    "aboutCharacter": "About them",
+    "aboutBoth": "About both",
+    "autoTag": "auto",
+    "addManual": "Add memory",
+    "addPlaceholder": "Write the memory...",
+    "autoPopup": "💭 New memories were added to this conversation"
   },
   "persona": {
     "title": "Who are you?",
@@ -161,6 +179,15 @@
     "greetingPlaceholder": "First message when starting the chat...",
     "tagsLabel": "Tags (separated by commas)",
     "tagsPlaceholder": "fantasy, elf, mage",
+    "advancedTitle": "⚙️ Advanced",
+    "advancedSubtitle": "Specific rules that take priority over the general personality if they contradict something.",
+    "writingStyleLabel": "Writing style",
+    "writingStylePlaceholder": "E.g: short sentences, uses lots of emojis, never uses capital letters...",
+    "rulesLabel": "Behavior rules",
+    "ruleNumber": "Rule {{n}}",
+    "ruleTriggerPlaceholder": "When the topic is... (e.g: politics, their past, money)",
+    "ruleBehaviorPlaceholder": "How they should react or what they should reply",
+    "addRule": "Add rule",
     "nsfwTitle": "NSFW Content",
     "nsfwSubtitle": "Enables adult themes",
     "nameRequired": "The name is required",

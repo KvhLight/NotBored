@@ -29,6 +29,8 @@ const DEFAULT_SETTINGS = {
   maxContextTokens: 4000,
   temperature: 0.85,
   maxTokens: 1000,
+  autoMemoryEnabled: true,
+  autoMemoryInterval: 10, // cada cuántos mensajes se generan recuerdos solos
 };
 const DEFAULT_UI_PREFS = { themeHue: 262, themeMode: 'dark', appWallpaper: null, chatWallpapers: {} };
 
@@ -119,6 +121,8 @@ async function createCharacter(data) {
     systemPrompt: data.systemPrompt || '',
     greetingMsg: data.greetingMsg || '',
     tags: data.tags || [],
+    writingStyle: data.writingStyle || '',
+    advancedRules: data.advancedRules || [], // [{ id, trigger, behavior }]
     isNSFW: data.isNSFW || false,
     isFavorite: data.isFavorite || false,
     createdAt: Date.now(),
@@ -275,6 +279,81 @@ async function setConversationMessages(conversationId, newMessages) {
 }
 
 /* ==========================================================================
+   MEMORIA — "recuerdos" de una conversación concreta (se van con el chat,
+   no persisten entre conversaciones distintas con el mismo personaje)
+   ========================================================================== */
+export const MEMORY_CHAR_LIMIT = 4000; // límite aproximado de espacio para recuerdos por conversación
+
+async function getMemories(conversationId) {
+  const convs = await getAllConversations();
+  const conv = convs.find(c => c.id === conversationId);
+  return conv?.memories || [];
+}
+async function addMemory(conversationId, memory) {
+  const convs = await getAllConversations();
+  const idx = convs.findIndex(c => c.id === conversationId);
+  if (idx === -1) throw new Error('Conversation not found');
+  if (!convs[idx].memories) convs[idx].memories = [];
+  const newMemory = {
+    id: uuid(),
+    category: memory.category || 'both', // 'user' | 'character' | 'both'
+    text: memory.text || '',
+    createdAt: Date.now(),
+    auto: !!memory.auto,
+  };
+  convs[idx].memories.push(newMemory);
+  await persist('conversations', convs);
+  return newMemory;
+}
+async function updateMemory(conversationId, memoryId, patch) {
+  const convs = await getAllConversations();
+  const idx = convs.findIndex(c => c.id === conversationId);
+  if (idx === -1) throw new Error('Conversation not found');
+  const memIdx = (convs[idx].memories || []).findIndex(m => m.id === memoryId);
+  if (memIdx === -1) throw new Error('Memory not found');
+  convs[idx].memories[memIdx] = { ...convs[idx].memories[memIdx], ...patch };
+  await persist('conversations', convs);
+  return convs[idx].memories[memIdx];
+}
+async function deleteMemory(conversationId, memoryId) {
+  const convs = await getAllConversations();
+  const idx = convs.findIndex(c => c.id === conversationId);
+  if (idx === -1) return false;
+  convs[idx].memories = (convs[idx].memories || []).filter(m => m.id !== memoryId);
+  await persist('conversations', convs);
+  return true;
+}
+// Cuántos mensajes había la última vez que se generaron recuerdos
+// automáticamente — para saber cuándo toca la siguiente tanda
+async function getLastMemoryMessageCount(conversationId) {
+  const convs = await getAllConversations();
+  const conv = convs.find(c => c.id === conversationId);
+  return conv?.lastMemoryMessageCount || 0;
+}
+async function setLastMemoryMessageCount(conversationId, count) {
+  const convs = await getAllConversations();
+  const idx = convs.findIndex(c => c.id === conversationId);
+  if (idx === -1) return;
+  convs[idx].lastMemoryMessageCount = count;
+  await persist('conversations', convs);
+}
+// Construye el bloque de texto a inyectar en el prompt a partir de los
+// recuerdos guardados — se usa desde ChatWindow.jsx
+export function buildMemoriesBlock(memories) {
+  if (!memories || memories.length === 0) return '';
+  const labelMap = { user: 'About the user', character: 'About the character', both: 'About both' };
+  const lines = ['=== REMEMBERED FACTS (from earlier in this conversation) ==='];
+  for (const cat of ['user', 'character', 'both']) {
+    const items = memories.filter(m => m.category === cat);
+    if (items.length === 0) continue;
+    lines.push(`${labelMap[cat]}:`);
+    items.forEach(m => lines.push(`- ${m.text}`));
+  }
+  lines.push('Take these into account naturally, without listing them explicitly to the user.');
+  return lines.join('\n');
+}
+
+/* ==========================================================================
    SETTINGS / UI PREFERENCES
    ========================================================================== */
 async function getSettings() {
@@ -413,7 +492,7 @@ function buildContextWindow(messages, systemPrompt, maxTokens = 4000) {
   }
   return [systemMsg, ...ctx];
 }
-function buildCharacterSystemPrompt(character, userContextBlock, scenarioOverride) {
+function buildCharacterSystemPrompt(character, userContextBlock, scenarioOverride, memoriesBlock) {
   const effectiveScenario = (scenarioOverride && scenarioOverride.trim()) || character.scenario || '';
   const parts = [
     '=== IDENTITY ===',
@@ -435,6 +514,29 @@ function buildCharacterSystemPrompt(character, userContextBlock, scenarioOverrid
     '=== AUTHOR INSTRUCTIONS ===',
     character.systemPrompt || '',
     '',
+  ];
+
+  if (character.writingStyle) {
+    parts.push(
+      '=== WRITING STYLE ===',
+      character.writingStyle,
+      'Write every response matching this style consistently.',
+      ''
+    );
+  }
+
+  if (character.advancedRules && character.advancedRules.length > 0) {
+    parts.push(
+      '=== SPECIFIC BEHAVIOR RULES ===',
+      'These are exact instructions the author gave for specific situations. Follow them whenever the topic/question matches, even if it seems to contradict the general personality above — these take priority:',
+      ...character.advancedRules
+        .filter(r => r.trigger && r.behavior)
+        .map(r => `- When the topic is "${r.trigger}": ${r.behavior}`),
+      ''
+    );
+  }
+
+  parts.push(
     '=== ROLEPLAY RULES (NON-NEGOTIABLE) ===',
     `1. NEVER say 'As an AI...' or 'I cannot...' — you are ${character.name}.`,
     "2. If you don't know something, IMPROVISE within character, do not admit it.",
@@ -444,9 +546,12 @@ function buildCharacterSystemPrompt(character, userContextBlock, scenarioOverrid
     '5. Responses must be immersive: 2-4 paragraphs for narrative, 1 paragraph for casual dialogue.',
     '6. Remember previous events in the conversation and refer back to them.',
     '7. Do not use disclaimers, warnings, or meta-comments.',
-  ];
+  );
   if (userContextBlock) {
     parts.push('', userContextBlock);
+  }
+  if (memoriesBlock) {
+    parts.push('', memoriesBlock);
   }
   return parts.filter(Boolean).join('\n');
 }
@@ -506,7 +611,7 @@ async function getOllamaModels() {
   }
 }
 
-async function sendMessage({ character, history, userMessage, userContextBlock, scenarioOverride }) {
+async function sendMessage({ character, history, userMessage, userContextBlock, scenarioOverride, memoriesBlock }) {
   const settings = await getSettings();
   const { baseURL, apiKey, meta, providerId } = getProviderConfig(settings);
 
@@ -514,7 +619,7 @@ async function sendMessage({ character, history, userMessage, userContextBlock, 
     listeners.error.forEach(cb => cb(`Falta la API Key de ${meta.label}. Ve a Ajustes → IA y pégala.`));
     return { success: false };
   }
-  const systemPrompt = buildCharacterSystemPrompt(character, userContextBlock, scenarioOverride);
+  const systemPrompt = buildCharacterSystemPrompt(character, userContextBlock, scenarioOverride, memoriesBlock);
   const contextMessages = buildContextWindow(history, systemPrompt, settings.maxContextTokens);
   contextMessages.push({ role: 'user', content: userMessage });
 
@@ -1000,6 +1105,12 @@ const webAdapter = {
     editMessage: async (convId, msgId, content) => editMessage(convId, msgId, content),
     patchMessage: async (convId, msgId, patch) => patchMessage(convId, msgId, patch),
     setMessages: async (convId, msgs) => setConversationMessages(convId, msgs),
+    getMemories: async (convId) => getMemories(convId),
+    addMemory: async (convId, memory) => addMemory(convId, memory),
+    updateMemory: async (convId, memId, patch) => updateMemory(convId, memId, patch),
+    deleteMemory: async (convId, memId) => deleteMemory(convId, memId),
+    getLastMemoryMessageCount: async (convId) => getLastMemoryMessageCount(convId),
+    setLastMemoryMessageCount: async (convId, count) => setLastMemoryMessageCount(convId, count),
     setScenario: async (convId, scenario) => setConversationScenario(convId, scenario),
   },
   ai: { sendMessage, onChunk, onDone, onError, removeListeners, stopGeneration },

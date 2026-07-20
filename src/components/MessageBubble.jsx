@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Pencil, Trash2, RotateCcw, Check, X, Copy, Scissors } from 'lucide-react';
+import { Pencil, Trash2, RotateCcw, Check, X, Copy, Scissors, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
 
@@ -14,6 +14,7 @@ export default function MessageBubble({
   onDeleteFrom,
   onEdit,
   onRegenerate,
+  variantInfo,
 }) {
   const isUser = message.role === 'user';
   const { t } = useApp();
@@ -184,6 +185,26 @@ export default function MessageBubble({
                 <Scissors size={12} />
               </button>
             )}
+          </div>
+        )}
+
+        {variantInfo && (
+          <div className='flex items-center gap-2 mt-1 px-1'>
+            <button
+              onClick={variantInfo.onPrev}
+              disabled={variantInfo.index === 0}
+              className='p-1 rounded-lg hover:bg-white/10 text-gray-500 hover:text-white disabled:opacity-30'
+            >
+              <ChevronLeft size={13} />
+            </button>
+            <span className='text-xs text-gray-600'>{variantInfo.index + 1}/{variantInfo.total}</span>
+            <button
+              onClick={variantInfo.onNext}
+              disabled={variantInfo.index === variantInfo.total - 1}
+              className='p-1 rounded-lg hover:bg-white/10 text-gray-500 hover:text-white disabled:opacity-30'
+            >
+              <ChevronRight size={13} />
+            </button>
           </div>
         )}
       </div>

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Save } from 'lucide-react';
 import AvatarPicker from './AvatarPicker';
+import AdvancedCharacterSection from './AdvancedCharacterSection';
 import { useApp } from '../context/AppContext';
 import useKeyboardInset from '../hooks/useKeyboardInset';
 
@@ -25,6 +26,8 @@ export default function CharacterForm({ character, characters, onSave, onCancel,
     systemPrompt: character?.systemPrompt || '',
     greetingMsg: character?.greetingMsg || '',
     tags: character?.tags?.join(', ') || '',
+    writingStyle: character?.writingStyle || '',
+    advancedRules: character?.advancedRules || [],
     isNSFW: character?.isNSFW || false,
   });
 
@@ -196,6 +199,13 @@ export default function CharacterForm({ character, characters, onSave, onCancel,
             }`} />
           </button>
         </div>
+
+        <AdvancedCharacterSection
+          writingStyle={form.writingStyle}
+          advancedRules={form.advancedRules}
+          onChange={patch => setForm(f => ({ ...f, ...patch }))}
+          t={t}
+        />
 
         <div className='h-8' /> {/* Bottom padding */}
       </div>
