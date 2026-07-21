@@ -30,6 +30,7 @@ export default function App() {
   const { t } = useApp();
   const [activeTagFilter, setActiveTagFilter] = useState(null);
   const [showAiBanner, setShowAiBanner] = useState(false);
+  const [importMessage, setImportMessage] = useState(null);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   
   // Cargar personajes al inicio
@@ -61,6 +62,18 @@ export default function App() {
   async function loadCharacters() {
     const chars = await window.electronAPI.characters.getAll();
     setCharacters(chars);
+  }
+
+  async function handleImportCharacter() {
+    const result = await window.electronAPI.characters.import();
+    if (result.canceled) return;
+    if (result.success) {
+      await loadCharacters();
+      setImportMessage({ type: 'success', text: t('sidebar.importSuccess', { name: result.character.name }) });
+    } else {
+      setImportMessage({ type: 'error', text: result.error || t('sidebar.importError') });
+    }
+    setTimeout(() => setImportMessage(null), 4000);
   }
 
   async function handleSelectCharacter(character) {
@@ -203,6 +216,16 @@ export default function App() {
                   </button>
                 </div>
               )}
+              {importMessage && (
+                <div className={`absolute top-12 left-3 right-3 z-20 flex items-center gap-2 rounded-xl px-3 py-2.5 backdrop-blur-sm ${
+                  importMessage.type === 'success' ? 'bg-green-600/20 border border-green-500/30' : 'bg-red-600/20 border border-red-500/30'
+                }`}>
+                  <span className='text-sm flex-1 text-white'>{importMessage.text}</span>
+                  <button onClick={() => setImportMessage(null)} className='text-gray-400 hover:text-white p-1'>
+                    <X size={14} />
+                  </button>
+                </div>
+              )}
               <Sidebar
                 characters={characters}
                 activeTagFilter={activeTagFilter}
@@ -211,6 +234,7 @@ export default function App() {
                 onEditCharacter={(char) => { setEditingCharacter(char); setShowForm(true); }}
                 onDeleteCharacter={handleDeleteCharacter}
                 onOpenSettings={() => setShowSettings(true)}
+                onImportCharacter={handleImportCharacter}
                 onToggleFavorite={handleToggleFavorite}
               />
             </motion.div>

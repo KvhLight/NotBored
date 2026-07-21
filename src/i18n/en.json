@@ -25,7 +25,8 @@
     "contextUsage": "context",
     "contextUsageTooltip": "How much of the conversation's context is being used",
     "stop": "Stop",
-    "continue": "Continue"
+    "continue": "Continue",
+    "wrapAsterisks": "Wrap in asterisks (action/description)"
   },
   "messageActions": {
     "edit": "Edit",
@@ -70,6 +71,7 @@
     "new": "New Lorecard",
     "edit": "Edit Character",
     "save": "Save",
+    "export": "Export (share)",
     "delete": "Delete",
     "name": "Name",
     "description": "Description",
@@ -155,6 +157,9 @@
   "sidebar": {
     "newLorecard": "New Lorecard",
     "settings": "Settings",
+    "importCharacter": "Import character",
+    "importSuccess": "\"{{name}}\" imported successfully",
+    "importError": "Couldn't import the character. Is it a valid file?",
     "search": "Search",
     "delete": "Delete",
     "edit": "Edit",

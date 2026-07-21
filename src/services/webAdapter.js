@@ -1081,6 +1081,112 @@ async function importAllData() {
   }
 }
 
+/* ==========================================================================
+   COMPARTIR UN PERSONAJE — exporta solo la ficha (sin conversaciones, sin
+   favoritos, sin fechas locales) para poder pasárselo a alguien. Al
+   importarlo se crea como personaje nuevo, con su propio id.
+   ========================================================================== */
+const CHARACTER_SHARE_FORMAT_VERSION = 1;
+// Campos que sí viajan al compartir un personaje (todo lo demás es local:
+// id, createdAt, updatedAt, isFavorite no tienen sentido para otra persona)
+const SHAREABLE_CHARACTER_FIELDS = [
+  'name', 'avatar', 'description', 'personality', 'scenario',
+  'systemPrompt', 'greetingMsg', 'tags', 'isNSFW',
+  'writingStyle', 'advancedRules',
+];
+
+async function exportCharacter(characterId) {
+  try {
+    const character = await getCharacterById(characterId);
+    if (!character) return { success: false, error: 'Personaje no encontrado.' };
+
+    const shareable = {};
+    for (const field of SHAREABLE_CHARACTER_FIELDS) {
+      if (character[field] !== undefined) shareable[field] = character[field];
+    }
+
+    const payload = {
+      app: 'notbored-character',
+      formatVersion: CHARACTER_SHARE_FORMAT_VERSION,
+      exportedAt: new Date().toISOString(),
+      character: shareable,
+    };
+
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const safeName = (character.name || 'personaje').toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 40);
+    a.href = url;
+    a.download = `${safeName}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+async function importCharacter() {
+  const file = await new Promise((resolve) => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    // Mismo motivo que en importAllData: en iOS un .json recibido por
+    // AirDrop/WhatsApp a veces no lleva el MIME "application/json"
+    input.accept = '.json,application/json,text/plain,text/json,*/*';
+    input.style.display = 'none';
+    document.body.appendChild(input);
+
+    let settled = false;
+    const cleanup = () => {
+      window.removeEventListener('focus', onFocusFallback);
+      input.remove();
+    };
+    input.onchange = () => {
+      settled = true;
+      const chosen = input.files?.[0] || null;
+      cleanup();
+      resolve(chosen);
+    };
+    function onFocusFallback() {
+      setTimeout(() => {
+        if (!settled) {
+          settled = true;
+          cleanup();
+          resolve(null);
+        }
+      }, 300);
+    }
+    window.addEventListener('focus', onFocusFallback);
+    input.click();
+  });
+
+  if (!file) return { success: false, canceled: true };
+
+  try {
+    const text = await readFileAsText(file);
+    const parsed = JSON.parse(text);
+
+    // Permisivo a propósito: mientras tenga un objeto "character" con al
+    // menos un nombre, se acepta — así versiones futuras (o de otra app
+    // compatible) con campos de más o de menos no rompen la importación.
+    if (!parsed?.character?.name) {
+      return { success: false, error: 'El archivo no es una ficha de personaje válida.' };
+    }
+
+    const data = {};
+    for (const field of SHAREABLE_CHARACTER_FIELDS) {
+      if (parsed.character[field] !== undefined) data[field] = parsed.character[field];
+    }
+
+    const newCharacter = await createCharacter(data);
+    return { success: true, character: newCharacter };
+  } catch {
+    return { success: false, error: 'El archivo no se pudo leer como JSON válido.' };
+  }
+}
+
 const webAdapter = {
   characters: {
     getAll: async () => getAllCharacters(),
@@ -1088,6 +1194,8 @@ const webAdapter = {
     create: async (data) => createCharacter(data),
     update: async (id, data) => updateCharacter(id, data),
     delete: async (id) => deleteCharacter(id),
+    export: async (id) => exportCharacter(id),
+    import: async () => importCharacter(),
   },
   window: {
     minimize() {},

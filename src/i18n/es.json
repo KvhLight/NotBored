@@ -25,7 +25,8 @@
     "contextUsage": "contexto",
     "contextUsageTooltip": "Cuánto del contexto de la conversación se está usando",
     "stop": "Parar",
-    "continue": "Continuar"
+    "continue": "Continuar",
+    "wrapAsterisks": "Envolver entre asteriscos (acción/descripción)"
   },
   "messageActions": {
     "edit": "Editar",
@@ -70,6 +71,7 @@
     "new": "Nueva Lorecard",
     "edit": "Editar Personaje",
     "save": "Guardar",
+    "export": "Exportar (compartir)",
     "delete": "Eliminar",
     "name": "Nombre",
     "description": "Descripción",
@@ -154,6 +156,9 @@
   "sidebar": {
     "newLorecard": "Nueva Lorecard",
     "settings": "Configuración",
+    "importCharacter": "Importar personaje",
+    "importSuccess": "\"{{name}}\" importado correctamente",
+    "importError": "No se pudo importar el personaje. ¿Es un archivo válido?",
     "search": "Buscar",
     "delete": "Eliminar",
     "edit": "Editar",

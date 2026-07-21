@@ -256,6 +256,33 @@ export	default	function	ChatWindow({	character,	conversation,	onBack,	onNewChat,
     await requestAiResponse(updatedMessages, text);
   }
 
+  function handleWrapAsterisks() {
+    const el = inputRef.current;
+    if (!el) return;
+    const start = el.selectionStart ?? inputText.length;
+    const end = el.selectionEnd ?? inputText.length;
+
+    if (start !== end) {
+      // Hay texto seleccionado: envolvemos solo eso
+      const selected = inputText.slice(start, end);
+      const newValue = inputText.slice(0, start) + '*' + selected + '*' + inputText.slice(end);
+      setInputText(newValue);
+      requestAnimationFrame(() => {
+        el.focus();
+        el.setSelectionRange(start + 1, end + 1);
+      });
+    } else {
+      // Sin selección: envolvemos todo lo escrito, cursor justo antes del * final
+      const newValue = `*${inputText}*`;
+      setInputText(newValue);
+      requestAnimationFrame(() => {
+        el.focus();
+        const pos = newValue.length - 1;
+        el.setSelectionRange(pos, pos);
+      });
+    }
+  }
+
   function handleKeyDown(e) {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -514,6 +541,15 @@ export	default	function	ChatWindow({	character,	conversation,	onBack,	onNewChat,
             style={{ fieldSizing: 'content' }}
           />
           
+          <button
+            onClick={handleWrapAsterisks}
+            disabled={isStreaming}
+            title={t('chat.wrapAsterisks')}
+            className='p-2.5 rounded-xl flex-shrink-0 text-gray-500 hover:text-white hover:bg-white/5 transition-colors disabled:opacity-40 font-serif italic text-base leading-none'
+          >
+            *
+          </button>
+
           <button 
             onClick={isStreaming ? handleStop : (inputText.trim() ? sendMessage : handleContinue)} 
             disabled={!isStreaming && !inputText.trim() && messages.length === 0}

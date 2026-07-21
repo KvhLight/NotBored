@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Search, Settings } from 'lucide-react';
+import { Search, Settings, Download } from 'lucide-react';
 import { useCharacterFilter } from '../hooks/useCharacterFilter';
 import TagFilterBar      from './TagFilterBar';
 import CharacterGridCard from './CharacterGridCard';
@@ -14,6 +14,7 @@ export default function Sidebar({
   onEditCharacter,
   onDeleteCharacter,
   onOpenSettings,
+  onImportCharacter,
   onToggleFavorite,
 }) {
   const { t } = useApp();
@@ -44,13 +45,22 @@ export default function Sidebar({
       <div className='px-4 pt-12 pb-3 bg-gradient-to-b from-card-bg to-transparent'>
         <div className='flex items-center justify-between mb-1'>
           <h1 className='text-xl font-bold text-white'>{t('sidebar.title')}</h1>
-          <button
-            onClick={onOpenSettings}
-            title={t('sidebar.settings')}
-            className='p-2 rounded-xl hover:bg-white/10 text-gray-400 hover:text-white transition-colors'
-          >
-            <Settings size={16} />
-          </button>
+          <div className='flex items-center gap-1'>
+            <button
+              onClick={onImportCharacter}
+              title={t('sidebar.importCharacter')}
+              className='p-2 rounded-xl hover:bg-white/10 text-gray-400 hover:text-white transition-colors'
+            >
+              <Download size={16} />
+            </button>
+            <button
+              onClick={onOpenSettings}
+              title={t('sidebar.settings')}
+              className='p-2 rounded-xl hover:bg-white/10 text-gray-400 hover:text-white transition-colors'
+            >
+              <Settings size={16} />
+            </button>
+          </div>
         </div>
         <p className='text-xs text-gray-500'>
           {t('sidebar.version')} {filteredCharacters.length}/{characters.length}

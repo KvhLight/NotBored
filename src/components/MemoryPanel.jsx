@@ -5,7 +5,7 @@ import { useApp } from '../context/AppContext';
 import { generateMemories } from '../services/memoryAnalysis';
 
 const MEMORY_CHAR_LIMIT = 4000;
-const CATEGORIES = ['user', 'character', 'both'];
+const CATEGORIES = ['both', 'user', 'character'];
 
 export default function MemoryPanel({ isOpen, onClose, conversationId, character, messages }) {
   const { t } = useApp();
@@ -14,6 +14,7 @@ export default function MemoryPanel({ isOpen, onClose, conversationId, character
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState('');
+  const [activeTab, setActiveTab] = useState('both');
 
   const [adding, setAdding] = useState(false);
   const [newCategory, setNewCategory] = useState('both');
@@ -24,6 +25,7 @@ export default function MemoryPanel({ isOpen, onClose, conversationId, character
   useEffect(() => {
     if (!isOpen) return;
     setLoading(true);
+    setActiveTab('both');
     Promise.all([
       window.electronAPI.conversations.getMemories(conversationId),
       window.electronAPI.settings.get(),
@@ -143,7 +145,7 @@ export default function MemoryPanel({ isOpen, onClose, conversationId, character
                   onClick={toggleAuto}
                   className={`w-11 h-6 rounded-full flex-shrink-0 transition-colors relative ${autoEnabled ? 'bg-accent' : 'bg-gray-700'}`}
                 >
-                  <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full transition-transform ${autoEnabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                  <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${autoEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
                 </button>
               </div>
 
@@ -158,64 +160,70 @@ export default function MemoryPanel({ isOpen, onClose, conversationId, character
 
               {error && <p className='text-xs text-red-400 mb-3'>{error}</p>}
 
-              {/* Lista agrupada por categoría */}
-              {memories.length === 0 ? (
+              {/* Pestañas: Ambos (por defecto) / Tuyos / Suyos */}
+              <div className='grid grid-cols-3 gap-1.5 mb-3'>
+                {CATEGORIES.map(cat => (
+                  <button
+                    key={cat}
+                    onClick={() => setActiveTab(cat)}
+                    className={`py-2 rounded-xl text-xs font-medium border transition-colors ${
+                      activeTab === cat ? 'border-accent bg-accent/10 text-white' : 'border-white/10 text-gray-400 hover:border-white/30'
+                    }`}
+                  >
+                    {categoryLabels[cat]}
+                  </button>
+                ))}
+              </div>
+
+              {/* Lista de la categoría activa */}
+              {memories.filter(m => m.category === activeTab).length === 0 ? (
                 <p className='text-xs text-gray-500 text-center py-6'>{t('memory.emptyState')}</p>
               ) : (
-                CATEGORIES.map(cat => {
-                  const items = memories.filter(m => m.category === cat);
-                  if (items.length === 0) return null;
-                  return (
-                    <div key={cat} className='mb-4'>
-                      <p className='text-xs uppercase tracking-wide text-gray-600 mb-2'>{categoryLabels[cat]}</p>
-                      <div className='space-y-2'>
-                        {items.map(m => (
-                          <div key={m.id} className='bg-app-bg rounded-xl p-3 border border-white/10'>
-                            {editingId === m.id ? (
-                              <div className='flex flex-col gap-2'>
-                                <textarea
-                                  autoFocus
-                                  value={editDraft}
-                                  onChange={e => setEditDraft(e.target.value)}
-                                  rows={2}
-                                  className='w-full bg-card-bg text-white text-sm rounded-lg p-2 outline-none resize-none'
-                                />
-                                <div className='flex justify-end gap-2'>
-                                  <button onClick={() => setEditingId(null)} className='p-1.5 rounded-lg hover:bg-white/10 text-gray-400'>
-                                    <X size={13} />
-                                  </button>
-                                  <button onClick={() => handleSaveEdit(m.id)} className='p-1.5 rounded-lg hover:bg-white/10 text-green-400'>
-                                    <Check size={13} />
-                                  </button>
-                                </div>
-                              </div>
-                            ) : (
-                              <div className='flex items-start justify-between gap-2'>
-                                <p className='text-sm text-gray-200 flex-1'>
-                                  {m.text} {m.auto && <span className='text-gray-600 text-xs'>· {t('memory.autoTag')}</span>}
-                                </p>
-                                <div className='flex items-center gap-1 flex-shrink-0'>
-                                  <button
-                                    onClick={() => { setEditingId(m.id); setEditDraft(m.text); }}
-                                    className='p-1.5 rounded-lg hover:bg-white/10 text-gray-500 hover:text-white'
-                                  >
-                                    <Pencil size={12} />
-                                  </button>
-                                  <button
-                                    onClick={() => handleDelete(m.id)}
-                                    className='p-1.5 rounded-lg hover:bg-white/10 text-gray-500 hover:text-red-400'
-                                  >
-                                    <Trash2 size={12} />
-                                  </button>
-                                </div>
-                              </div>
-                            )}
+                <div className='space-y-2 mb-2'>
+                  {memories.filter(m => m.category === activeTab).map(m => (
+                    <div key={m.id} className='bg-app-bg rounded-xl p-3 border border-white/10'>
+                      {editingId === m.id ? (
+                        <div className='flex flex-col gap-2'>
+                          <textarea
+                            autoFocus
+                            value={editDraft}
+                            onChange={e => setEditDraft(e.target.value)}
+                            rows={2}
+                            className='w-full bg-card-bg text-white text-sm rounded-lg p-2 outline-none resize-none'
+                          />
+                          <div className='flex justify-end gap-2'>
+                            <button onClick={() => setEditingId(null)} className='p-1.5 rounded-lg hover:bg-white/10 text-gray-400'>
+                              <X size={13} />
+                            </button>
+                            <button onClick={() => handleSaveEdit(m.id)} className='p-1.5 rounded-lg hover:bg-white/10 text-green-400'>
+                              <Check size={13} />
+                            </button>
                           </div>
-                        ))}
-                      </div>
+                        </div>
+                      ) : (
+                        <div className='flex items-start justify-between gap-2'>
+                          <p className='text-sm text-gray-200 flex-1'>
+                            {m.text} {m.auto && <span className='text-gray-600 text-xs'>· {t('memory.autoTag')}</span>}
+                          </p>
+                          <div className='flex items-center gap-1 flex-shrink-0'>
+                            <button
+                              onClick={() => { setEditingId(m.id); setEditDraft(m.text); }}
+                              className='p-1.5 rounded-lg hover:bg-white/10 text-gray-500 hover:text-white'
+                            >
+                              <Pencil size={12} />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(m.id)}
+                              className='p-1.5 rounded-lg hover:bg-white/10 text-gray-500 hover:text-red-400'
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  );
-                })
+                  ))}
+                </div>
               )}
 
               {/* Añadir a mano */}

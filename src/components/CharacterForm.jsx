@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Save } from 'lucide-react';
+import { X, Save, Share } from 'lucide-react';
 import AvatarPicker from './AvatarPicker';
 import AdvancedCharacterSection from './AdvancedCharacterSection';
 import { useApp } from '../context/AppContext';
@@ -96,12 +96,23 @@ export default function CharacterForm({ character, characters, onSave, onCancel,
         <h2 className='text-base font-bold text-white'>
           {character ? t('character.edit') : t('character.new')}
         </h2>
-        <button 
-          onClick={handleSave}
-          className='flex items-center gap-1.5 bg-accent text-white text-sm px-3 py-1.5 rounded-xl hover:bg-accent/80 transition-colors'
-        >
-          <Save size={14} /> {t('character.save')}
-        </button>
+        <div className='flex items-center gap-2'>
+          {character && (
+            <button
+              onClick={() => window.electronAPI.characters.export(character.id)}
+              title={t('character.export')}
+              className='p-2 rounded-xl hover:bg-white/10 text-gray-400 hover:text-white'
+            >
+              <Share size={16} />
+            </button>
+          )}
+          <button 
+            onClick={handleSave}
+            className='flex items-center gap-1.5 bg-accent text-white text-sm px-3 py-1.5 rounded-xl hover:bg-accent/80 transition-colors'
+          >
+            <Save size={14} /> {t('character.save')}
+          </button>
+        </div>
       </div>
 
       <div
