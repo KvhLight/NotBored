@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
+import { X, ArrowLeft, Plus, Pencil, Trash2 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import Sidebar from './components/Sidebar';
 import ChatWindow from './components/ChatWindow';
@@ -10,6 +10,8 @@ import CharacterProfile from './components/CharacterProfile';
 import BottomNavBar from './components/BottomNavBar';
 import RecentChatsView from './components/RecentChatsView';
 import ForgePanel from './components/ForgePanel';
+import GroupForm from './components/GroupForm';
+import GroupChatWindow from './components/GroupChatWindow';
 import { useApp } from './context/AppContext';
 import { PROVIDERS } from './config/providers';
 
@@ -32,10 +34,16 @@ export default function App() {
   const [showAiBanner, setShowAiBanner] = useState(false);
   const [importMessage, setImportMessage] = useState(null);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
+  const [groups, setGroups] = useState([]);
+  const [showGroupForm, setShowGroupForm] = useState(false);
+  const [editingGroup, setEditingGroup] = useState(null);
+  const [selectedGroup, setSelectedGroup] = useState(null);
+  const [activeGroupConversation, setActiveGroupConversation] = useState(null);
   
   // Cargar personajes al inicio
   useEffect(() => {
     loadCharacters();
+    loadGroups();
     checkAiConfigured();
 
     const goOffline = () => setIsOffline(true);
@@ -74,6 +82,38 @@ export default function App() {
       setImportMessage({ type: 'error', text: result.error || t('sidebar.importError') });
     }
     setTimeout(() => setImportMessage(null), 4000);
+  }
+
+  async function loadGroups() {
+    const gs = await window.electronAPI.groups.getAll();
+    setGroups(gs);
+  }
+
+  async function handleSelectGroup(group) {
+    const convs = await window.electronAPI.groupConversations.byGroup(group.id);
+    let conv = convs[0];
+    if (!conv) {
+      conv = await window.electronAPI.groupConversations.create(group.id);
+    }
+    setSelectedGroup(group);
+    setActiveGroupConversation(conv);
+    setView('groupChat');
+  }
+
+  async function handleSaveGroup(data) {
+    if (editingGroup) {
+      await window.electronAPI.groups.update(editingGroup.id, data);
+    } else {
+      await window.electronAPI.groups.create(data);
+    }
+    setShowGroupForm(false);
+    setEditingGroup(null);
+    await loadGroups();
+  }
+
+  async function handleDeleteGroup(id) {
+    await window.electronAPI.groups.delete(id);
+    await loadGroups();
   }
 
   async function handleSelectCharacter(character) {
@@ -235,6 +275,7 @@ export default function App() {
                 onDeleteCharacter={handleDeleteCharacter}
                 onOpenSettings={() => setShowSettings(true)}
                 onImportCharacter={handleImportCharacter}
+                onOpenGroups={() => setView('groups')}
                 onToggleFavorite={handleToggleFavorite}
               />
             </motion.div>
@@ -291,6 +332,111 @@ export default function App() {
                 onBack={() => setView('profile')}
                 onNewChat={() => handleNewChat(selectedCharacter)}
                 onShowSessions={() => setView('sessions')}
+              />
+            </motion.div>
+          )}
+
+          {/* VISTA: LISTA DE GRUPOS */}
+          {view === 'groups' && (
+            <motion.div
+              key='groups'
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              className='absolute inset-0 flex flex-col bg-app-bg'
+            >
+              <div className='flex items-center justify-between px-4 pt-12 pb-3 border-b border-white/10'>
+                <button onClick={() => setView('sidebar')} className='p-2 rounded-xl hover:bg-white/10 text-gray-400'>
+                  <ArrowLeft size={18} />
+                </button>
+                <h2 className='text-base font-bold text-white'>{t('group.title')}</h2>
+                <button
+                  onClick={() => { setEditingGroup(null); setShowGroupForm(true); }}
+                  className='flex items-center gap-1.5 bg-accent text-white text-sm px-3 py-1.5 rounded-xl hover:bg-accent/80'
+                >
+                  <Plus size={14} /> {t('group.new')}
+                </button>
+              </div>
+
+              <div className='flex-1 overflow-y-auto px-4 py-4 space-y-2'>
+                {groups.length === 0 ? (
+                  <p className='text-xs text-gray-500 text-center py-10'>{t('group.emptyState')}</p>
+                ) : (
+                  groups.map(g => {
+                    const groupChars = characters.filter(c => g.characterIds.includes(c.id));
+                    return (
+                      <div
+                        key={g.id}
+                        onClick={() => handleSelectGroup(g)}
+                        className='flex items-center gap-3 p-3 rounded-xl border border-white/10 hover:border-white/30 cursor-pointer'
+                      >
+                        <div className='flex -space-x-2 flex-shrink-0'>
+                          {groupChars.slice(0, 3).map(c => (
+                            <div key={c.id} className='w-9 h-9 rounded-full bg-accent/20 border-2 border-app-bg flex items-center justify-center overflow-hidden'>
+                              {c.avatar?.startsWith('data:') ? (
+                                <img src={c.avatar} alt={c.name} className='w-full h-full object-cover' />
+                              ) : (
+                                <span className='text-sm'>{c.avatar || '👤'}</span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                        <div className='flex-1 min-w-0'>
+                          <p className='text-sm text-white font-medium truncate'>{g.name}</p>
+                          <p className='text-xs text-gray-500 truncate'>{groupChars.map(c => c.name).join(', ')}</p>
+                        </div>
+                        <button
+                          onClick={e => { e.stopPropagation(); setEditingGroup(g); setShowGroupForm(true); }}
+                          className='p-2 rounded-lg hover:bg-white/10 text-gray-500 hover:text-white flex-shrink-0'
+                        >
+                          <Pencil size={14} />
+                        </button>
+                        <button
+                          onClick={e => { e.stopPropagation(); handleDeleteGroup(g.id); }}
+                          className='p-2 rounded-lg hover:bg-white/10 text-gray-500 hover:text-red-400 flex-shrink-0'
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </motion.div>
+          )}
+
+          {/* VISTA: FORMULARIO DE GRUPO */}
+          {showGroupForm && (
+            <motion.div
+              key='groupForm'
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              className='absolute inset-0'
+            >
+              <GroupForm
+                group={editingGroup}
+                characters={characters}
+                onSave={handleSaveGroup}
+                onCancel={() => { setShowGroupForm(false); setEditingGroup(null); }}
+              />
+            </motion.div>
+          )}
+
+          {/* VISTA: CHAT DE GRUPO */}
+          {view === 'groupChat' && selectedGroup && activeGroupConversation && (
+            <motion.div
+              key='groupChat'
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              className='absolute inset-0'
+            >
+              <GroupChatWindow
+                group={selectedGroup}
+                characters={characters.filter(c => selectedGroup.characterIds.includes(c.id))}
+                conversation={activeGroupConversation}
+                onBack={() => setView('groups')}
               />
             </motion.div>
           )}

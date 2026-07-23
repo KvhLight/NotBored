@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Search, Settings, Download } from 'lucide-react';
+import { Search, Settings, Download, Users2 } from 'lucide-react';
 import { useCharacterFilter } from '../hooks/useCharacterFilter';
 import TagFilterBar      from './TagFilterBar';
 import CharacterGridCard from './CharacterGridCard';
@@ -15,6 +15,7 @@ export default function Sidebar({
   onDeleteCharacter,
   onOpenSettings,
   onImportCharacter,
+  onOpenGroups,
   onToggleFavorite,
 }) {
   const { t } = useApp();
@@ -52,6 +53,13 @@ export default function Sidebar({
               className='p-2 rounded-xl hover:bg-white/10 text-gray-400 hover:text-white transition-colors'
             >
               <Download size={16} />
+            </button>
+            <button
+              onClick={onOpenGroups}
+              title={t('group.title')}
+              className='p-2 rounded-xl hover:bg-white/10 text-gray-400 hover:text-white transition-colors'
+            >
+              <Users2 size={16} />
             </button>
             <button
               onClick={onOpenSettings}

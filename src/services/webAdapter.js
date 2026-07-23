@@ -1187,6 +1187,194 @@ async function importCharacter() {
   }
 }
 
+/* ==========================================================================
+   GRUPOS — salas con varios personajes a la vez
+   ========================================================================== */
+async function getAllGroups() {
+  return load('groups', []);
+}
+async function createGroup({ name, characterIds, scenario }) {
+  const groups = await getAllGroups();
+  const newGroup = {
+    id: uuid(),
+    name: name?.trim() || 'Grupo sin nombre',
+    characterIds: characterIds || [],
+    scenario: scenario?.trim() || '',
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  };
+  groups.push(newGroup);
+  await persist('groups', groups);
+  return newGroup;
+}
+async function updateGroup(id, updates) {
+  const groups = await getAllGroups();
+  const idx = groups.findIndex(g => g.id === id);
+  if (idx === -1) throw new Error('Group not found');
+  groups[idx] = { ...groups[idx], ...updates, updatedAt: Date.now() };
+  await persist('groups', groups);
+  return groups[idx];
+}
+async function deleteGroup(id) {
+  await persist('groups', (await getAllGroups()).filter(g => g.id !== id));
+  const convs = await getAllGroupConversations();
+  await persist('groupConversations', convs.filter(c => c.groupId !== id));
+  return true;
+}
+
+/* ==========================================================================
+   CONVERSACIONES DE GRUPO — mismo concepto que las normales, pero con
+   groupId (en vez de characterId) y speakerId por mensaje (quién habló:
+   'user', o el id de un personaje concreto del grupo).
+   ========================================================================== */
+async function getAllGroupConversations() {
+  return load('groupConversations', []);
+}
+async function getGroupConversationsByGroup(groupId) {
+  return (await getAllGroupConversations())
+    .filter(c => c.groupId === groupId)
+    .sort((a, b) => b.lastActivity - a.lastActivity);
+}
+async function createGroupConversation(groupId) {
+  const convs = await getAllGroupConversations();
+  const newConv = {
+    id: uuid(),
+    groupId,
+    title: 'New Conversation',
+    messages: [],
+    memories: [],
+    lastMemoryMessageCount: 0,
+    createdAt: Date.now(),
+    lastActivity: Date.now(),
+  };
+  convs.push(newConv);
+  await persist('groupConversations', convs);
+  return newConv;
+}
+async function appendGroupMessage(conversationId, message) {
+  const convs = await getAllGroupConversations();
+  const idx = convs.findIndex(c => c.id === conversationId);
+  if (idx === -1) throw new Error('Group conversation not found');
+  const newMsg = {
+    id: uuid(),
+    role: message.role, // 'user' | 'assistant'
+    speakerId: message.speakerId ?? (message.role === 'user' ? 'user' : null), // 'user', o characterId
+    content: message.content,
+    timestamp: Date.now(),
+  };
+  convs[idx].messages.push(newMsg);
+  convs[idx].lastActivity = Date.now();
+  if (convs[idx].title === 'New Conversation' && convs[idx].messages.length === 1) {
+    convs[idx].title = (message.content || '').slice(0, 40) + '...';
+  }
+  await persist('groupConversations', convs);
+  return newMsg;
+}
+async function patchGroupMessage(conversationId, messageId, patch) {
+  const convs = await getAllGroupConversations();
+  const idx = convs.findIndex(c => c.id === conversationId);
+  if (idx === -1) return null;
+  const msgIdx = convs[idx].messages.findIndex(m => m.id === messageId);
+  if (msgIdx === -1) return null;
+  convs[idx].messages[msgIdx] = { ...convs[idx].messages[msgIdx], ...patch };
+  await persist('groupConversations', convs);
+  return convs[idx].messages[msgIdx];
+}
+async function editGroupMessage(conversationId, messageId, newContent) {
+  const convs = await getAllGroupConversations();
+  const idx = convs.findIndex(c => c.id === conversationId);
+  if (idx === -1) throw new Error('Group conversation not found');
+  const msgIdx = convs[idx].messages.findIndex(m => m.id === messageId);
+  if (msgIdx === -1) throw new Error('Message not found');
+  convs[idx].messages[msgIdx].content = newContent;
+  convs[idx].messages[msgIdx].edited = true;
+  await persist('groupConversations', convs);
+  return convs[idx].messages[msgIdx];
+}
+async function deleteGroupMessage(conversationId, messageId) {
+  const convs = await getAllGroupConversations();
+  const idx = convs.findIndex(c => c.id === conversationId);
+  if (idx === -1) return false;
+  convs[idx].messages = convs[idx].messages.filter(m => m.id !== messageId);
+  await persist('groupConversations', convs);
+  return true;
+}
+async function setGroupConversationMessages(conversationId, newMessages) {
+  const convs = await getAllGroupConversations();
+  const idx = convs.findIndex(c => c.id === conversationId);
+  if (idx === -1) throw new Error('Group conversation not found');
+  convs[idx].messages = newMessages;
+  convs[idx].lastActivity = Date.now();
+  await persist('groupConversations', convs);
+  return convs[idx];
+}
+async function deleteGroupConversation(id) {
+  await persist('groupConversations', (await getAllGroupConversations()).filter(c => c.id !== id));
+  return true;
+}
+async function renameGroupConversation(id, title) {
+  const convs = await getAllGroupConversations();
+  const idx = convs.findIndex(c => c.id === id);
+  if (idx === -1) throw new Error('Group conversation not found');
+  convs[idx].title = title;
+  await persist('groupConversations', convs);
+  return convs[idx];
+}
+
+// ---- Memoria para conversaciones de grupo (mismo concepto que en 1 a 1) ----
+async function getGroupMemories(conversationId) {
+  const convs = await getAllGroupConversations();
+  const conv = convs.find(c => c.id === conversationId);
+  return conv?.memories || [];
+}
+async function addGroupMemory(conversationId, memory) {
+  const convs = await getAllGroupConversations();
+  const idx = convs.findIndex(c => c.id === conversationId);
+  if (idx === -1) throw new Error('Group conversation not found');
+  if (!convs[idx].memories) convs[idx].memories = [];
+  const newMemory = {
+    id: uuid(),
+    category: memory.category || 'both',
+    text: memory.text || '',
+    createdAt: Date.now(),
+    auto: !!memory.auto,
+  };
+  convs[idx].memories.push(newMemory);
+  await persist('groupConversations', convs);
+  return newMemory;
+}
+async function updateGroupMemory(conversationId, memoryId, patch) {
+  const convs = await getAllGroupConversations();
+  const idx = convs.findIndex(c => c.id === conversationId);
+  if (idx === -1) throw new Error('Group conversation not found');
+  const memIdx = (convs[idx].memories || []).findIndex(m => m.id === memoryId);
+  if (memIdx === -1) throw new Error('Memory not found');
+  convs[idx].memories[memIdx] = { ...convs[idx].memories[memIdx], ...patch };
+  await persist('groupConversations', convs);
+  return convs[idx].memories[memIdx];
+}
+async function deleteGroupMemory(conversationId, memoryId) {
+  const convs = await getAllGroupConversations();
+  const idx = convs.findIndex(c => c.id === conversationId);
+  if (idx === -1) return false;
+  convs[idx].memories = (convs[idx].memories || []).filter(m => m.id !== memoryId);
+  await persist('groupConversations', convs);
+  return true;
+}
+async function getGroupLastMemoryMessageCount(conversationId) {
+  const convs = await getAllGroupConversations();
+  const conv = convs.find(c => c.id === conversationId);
+  return conv?.lastMemoryMessageCount || 0;
+}
+async function setGroupLastMemoryMessageCount(conversationId, count) {
+  const convs = await getAllGroupConversations();
+  const idx = convs.findIndex(c => c.id === conversationId);
+  if (idx === -1) return;
+  convs[idx].lastMemoryMessageCount = count;
+  await persist('groupConversations', convs);
+}
+
+
 const webAdapter = {
   characters: {
     getAll: async () => getAllCharacters(),
@@ -1248,6 +1436,29 @@ const webAdapter = {
     delete: async (id) => deleteWrappedReport(id),
   },
   data: { exportAll: exportAllData, importAll: importAllData },
+  groups: {
+    getAll: async () => getAllGroups(),
+    create: async (data) => createGroup(data),
+    update: async (id, updates) => updateGroup(id, updates),
+    delete: async (id) => deleteGroup(id),
+  },
+  groupConversations: {
+    byGroup: async (groupId) => getGroupConversationsByGroup(groupId),
+    create: async (groupId) => createGroupConversation(groupId),
+    appendMessage: async (convId, msg) => appendGroupMessage(convId, msg),
+    delete: async (id) => deleteGroupConversation(id),
+    rename: async (id, title) => renameGroupConversation(id, title),
+    deleteMessage: async (convId, msgId) => deleteGroupMessage(convId, msgId),
+    editMessage: async (convId, msgId, content) => editGroupMessage(convId, msgId, content),
+    patchMessage: async (convId, msgId, patch) => patchGroupMessage(convId, msgId, patch),
+    setMessages: async (convId, msgs) => setGroupConversationMessages(convId, msgs),
+    getMemories: async (convId) => getGroupMemories(convId),
+    addMemory: async (convId, memory) => addGroupMemory(convId, memory),
+    updateMemory: async (convId, memId, patch) => updateGroupMemory(convId, memId, patch),
+    deleteMemory: async (convId, memId) => deleteGroupMemory(convId, memId),
+    getLastMemoryMessageCount: async (convId) => getGroupLastMemoryMessageCount(convId),
+    setLastMemoryMessageCount: async (convId, count) => setGroupLastMemoryMessageCount(convId, count),
+  },
 };
 
 export function installWebAdapterIfNeeded() {

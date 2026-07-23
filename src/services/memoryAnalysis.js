@@ -20,10 +20,11 @@ const VALID_CATEGORIES = ['user', 'character', 'both'];
  * invocarla (automático cada N mensajes, o a mano) — esta función solo hace
  * el trabajo de un disparo.
  */
-export async function generateMemories({ conversationId, character, messages, providerId } = {}) {
+export async function generateMemories({ conversationId, character, messages, providerId, isGroup } = {}) {
+  const api = isGroup ? window.electronAPI.groupConversations : window.electronAPI.conversations;
   const [existingMemories, lastCount] = await Promise.all([
-    window.electronAPI.conversations.getMemories(conversationId),
-    window.electronAPI.conversations.getLastMemoryMessageCount(conversationId),
+    api.getMemories(conversationId),
+    api.getLastMemoryMessageCount(conversationId),
   ]);
 
   const newMessages = messages.slice(lastCount);
@@ -72,7 +73,7 @@ Devuelve exactamente este JSON:
 
   // Actualizamos el contador de mensajes procesados pase lo que pase, para
   // no volver a intentarlo con el mismo tramo si falla por otra razón
-  await window.electronAPI.conversations.setLastMemoryMessageCount(conversationId, messages.length);
+  await api.setLastMemoryMessageCount(conversationId, messages.length);
 
   if (!result.success) {
     return { success: false, error: result.error, added: [] };
@@ -88,7 +89,7 @@ Devuelve exactamente este JSON:
       const category = VALID_CATEGORIES.includes(m.category) ? m.category : 'both';
       const text = (m.text || '').trim();
       if (!text) continue;
-      const saved = await window.electronAPI.conversations.addMemory(conversationId, { category, text, auto: true });
+      const saved = await api.addMemory(conversationId, { category, text, auto: true });
       added.push(saved);
     }
     return { success: true, added };

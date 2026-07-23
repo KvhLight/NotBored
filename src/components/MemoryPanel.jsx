@@ -7,8 +7,9 @@ import { generateMemories } from '../services/memoryAnalysis';
 const MEMORY_CHAR_LIMIT = 4000;
 const CATEGORIES = ['both', 'user', 'character'];
 
-export default function MemoryPanel({ isOpen, onClose, conversationId, character, messages }) {
+export default function MemoryPanel({ isOpen, onClose, conversationId, character, messages, isGroup }) {
   const { t } = useApp();
+  const api = isGroup ? window.electronAPI.groupConversations : window.electronAPI.conversations;
   const [memories, setMemories] = useState([]);
   const [autoEnabled, setAutoEnabled] = useState(true);
   const [loading, setLoading] = useState(true);
@@ -27,7 +28,7 @@ export default function MemoryPanel({ isOpen, onClose, conversationId, character
     setLoading(true);
     setActiveTab('both');
     Promise.all([
-      window.electronAPI.conversations.getMemories(conversationId),
+      api.getMemories(conversationId),
       window.electronAPI.settings.get(),
     ]).then(([mems, settings]) => {
       setMemories(mems);
@@ -48,10 +49,10 @@ export default function MemoryPanel({ isOpen, onClose, conversationId, character
   async function handleGenerateNow() {
     setGenerating(true);
     setError('');
-    const result = await generateMemories({ conversationId, character, messages });
+    const result = await generateMemories({ conversationId, character, messages, isGroup });
     setGenerating(false);
     if (result.success) {
-      const fresh = await window.electronAPI.conversations.getMemories(conversationId);
+      const fresh = await api.getMemories(conversationId);
       setMemories(fresh);
     } else {
       setError(result.error || t('memory.generateError'));
@@ -60,7 +61,7 @@ export default function MemoryPanel({ isOpen, onClose, conversationId, character
 
   async function handleAddManual() {
     if (!newText.trim()) return;
-    const saved = await window.electronAPI.conversations.addMemory(conversationId, {
+    const saved = await api.addMemory(conversationId, {
       category: newCategory,
       text: newText.trim(),
       auto: false,
@@ -72,13 +73,13 @@ export default function MemoryPanel({ isOpen, onClose, conversationId, character
 
   async function handleSaveEdit(id) {
     if (!editDraft.trim()) return;
-    await window.electronAPI.conversations.updateMemory(conversationId, id, { text: editDraft.trim() });
+    await api.updateMemory(conversationId, id, { text: editDraft.trim() });
     setMemories(m => m.map(x => (x.id === id ? { ...x, text: editDraft.trim() } : x)));
     setEditingId(null);
   }
 
   async function handleDelete(id) {
-    await window.electronAPI.conversations.deleteMemory(conversationId, id);
+    await api.deleteMemory(conversationId, id);
     setMemories(m => m.filter(x => x.id !== id));
   }
 
