@@ -54,15 +54,21 @@ export default function ForgePanel({ creationMode,
   async function handleSave() {
     if (!generated) return;
     setSaving(true);
-    
-    // Extraer solo los campos que usa el schema de personaje
-    const { secretMotivation, ...charData } = generated;
-    
-    // Añadir la motivación secreta al systemPrompt para que el modelo la conozca
-    charData.systemPrompt += `\n\nMOTIVACIÓN SECRETA (no la reveles directamente):\n${secretMotivation}`;
-    
-    await onSaveCharacter(charData);
-    setSaving(false);
+    setError('');
+
+    try {
+      // Extraer solo los campos que usa el schema de personaje
+      const { secretMotivation, ...charData } = generated;
+
+      // Añadir la motivación secreta al systemPrompt para que el modelo la conozca
+      charData.systemPrompt = (charData.systemPrompt || '') + `\n\nMOTIVACIÓN SECRETA (no la reveles directamente):\n${secretMotivation || ''}`;
+
+      await onSaveCharacter(charData);
+    } catch (err) {
+      setError(err?.message || 'No se pudo guardar el personaje.');
+    } finally {
+      setSaving(false);
+    }
   }
 
   function updateField(key, value) {

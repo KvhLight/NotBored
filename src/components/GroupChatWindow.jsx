@@ -22,6 +22,20 @@ export default function GroupChatWindow({ group, characters, conversation, onBac
   const [showMemoryPanel, setShowMemoryPanel] = useState(false);
   const [memoryPopup, setMemoryPopup] = useState(false);
   const [error, setError] = useState(null);
+  const [groupPersonaName, setGroupPersonaName] = useState(null);
+
+  useEffect(() => {
+    (async () => {
+      const selection = await window.electronAPI.personas.getSelection(`group:${group.id}`);
+      if (selection.enabled && selection.personaId) {
+        const all = await window.electronAPI.personas.getAll();
+        const persona = all.find(p => p.id === selection.personaId);
+        setGroupPersonaName(persona?.name || null);
+      } else {
+        setGroupPersonaName(null);
+      }
+    })();
+  }, [group.id]);
 
   const convId = conversation.id;
   const bottomRef = useRef(null);
@@ -112,7 +126,7 @@ export default function GroupChatWindow({ group, characters, conversation, onBac
   }
 
   function speakerDisplayName(speakerId) {
-    if (speakerId === 'user') return userProfile?.alias || t('group.you');
+    if (speakerId === 'user') return groupPersonaName || userProfile?.alias || t('group.you');
     return charById(speakerId)?.name || t('group.someone');
   }
 
@@ -152,8 +166,9 @@ export default function GroupChatWindow({ group, characters, conversation, onBac
     }
   }
 
-  async function getUserContextBlockFor(characterId) {
-    const selection = await window.electronAPI.personas.getSelection(characterId);
+  async function getGroupUserContextBlock() {
+    const personaKey = `group:${group.id}`;
+    const selection = await window.electronAPI.personas.getSelection(personaKey);
     if (selection.enabled && selection.personaId) {
       const all = await window.electronAPI.personas.getAll();
       const persona = all.find(p => p.id === selection.personaId);
@@ -181,7 +196,7 @@ export default function GroupChatWindow({ group, characters, conversation, onBac
     const otherCharacters = characters.filter(c => c.id !== characterId);
     const nameResolver = (speakerId) => resolveSpeakerName(speakerId, {
       characters,
-      userDisplayName: userProfile?.alias || t('group.you'),
+      userDisplayName: groupPersonaName || userProfile?.alias || t('group.you'),
     });
 
     const fullHistory = buildGroupHistory({ messages, currentCharacterId: characterId, nameResolver });
@@ -191,7 +206,7 @@ export default function GroupChatWindow({ group, characters, conversation, onBac
 
     const memories = await window.electronAPI.groupConversations.getMemories(convId);
     const scenarioOverride = buildGroupSystemContext({ group, otherCharacters, currentCharacter: character });
-    const userContextBlock = await getUserContextBlockFor(characterId);
+    const userContextBlock = await getGroupUserContextBlock();
 
     const placeholder = await window.electronAPI.groupConversations.appendMessage(convId, {
       role: 'assistant',
@@ -353,7 +368,7 @@ export default function GroupChatWindow({ group, characters, conversation, onBac
         isOpen={showSpeakerPicker}
         onClose={() => setShowSpeakerPicker(false)}
         characters={characters}
-        userLabel={userProfile?.alias || t('group.you')}
+        userLabel={groupPersonaName || userProfile?.alias || t('group.you')}
         suggestedSpeakerId={suggestedSpeakerId}
         onSelect={handleSelectSpeaker}
       />

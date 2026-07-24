@@ -1,13 +1,39 @@
 import React, { useState } from 'react';
-import { X, Save, Check } from 'lucide-react';
+import { X, Save, Check, Search, UserCircle2 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import PersonaPicker from './PersonaPicker';
 
 export default function GroupForm({ group, characters, onSave, onCancel }) {
-  const { t } = useApp();
+  const { t, userProfile } = useApp();
   const [name, setName] = useState(group?.name || '');
   const [scenario, setScenario] = useState(group?.scenario || '');
   const [selectedIds, setSelectedIds] = useState(group?.characterIds || []);
   const [error, setError] = useState('');
+  const [search, setSearch] = useState('');
+  const [showPersonaPicker, setShowPersonaPicker] = useState(false);
+  const [groupPersona, setGroupPersona] = useState(null); // persona elegida para este grupo, si hay alguna
+
+  // La persona de un grupo se guarda con una clave propia ('group:<id>'),
+  // reutilizando el mismo sistema de personas que ya existe por personaje —
+  // solo se puede elegir una vez que el grupo ya existe (tiene id).
+  const personaKey = group ? `group:${group.id}` : null;
+
+  React.useEffect(() => {
+    if (!personaKey) return;
+    (async () => {
+      const selection = await window.electronAPI.personas.getSelection(personaKey);
+      if (selection.enabled && selection.personaId) {
+        const all = await window.electronAPI.personas.getAll();
+        setGroupPersona(all.find(p => p.id === selection.personaId) || null);
+      } else {
+        setGroupPersona(null);
+      }
+    })();
+  }, [personaKey]);
+
+  const filteredCharacters = characters.filter(c =>
+    c.name.toLowerCase().includes(search.trim().toLowerCase())
+  );
 
   function toggleCharacter(id) {
     setSelectedIds(prev => (prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]));
@@ -26,7 +52,7 @@ export default function GroupForm({ group, characters, onSave, onCancel }) {
   }
 
   return (
-    <div className='flex flex-col h-full bg-app-bg'>
+    <div className='flex flex-col h-full bg-app-bg relative'>
       <div className='flex items-center justify-between px-4 pt-12 pb-3 border-b border-white/10'>
         <button onClick={onCancel} className='p-2 rounded-xl hover:bg-white/10 text-gray-400'>
           <X size={18} />
@@ -66,16 +92,49 @@ export default function GroupForm({ group, characters, onSave, onCancel }) {
           />
         </div>
 
+        {personaKey && (
+          <div>
+            <label className='text-xs text-gray-500 mb-1.5 block'>{t('group.yourPersonaLabel')}</label>
+            <button
+              onClick={() => setShowPersonaPicker(true)}
+              className='w-full flex items-center gap-3 p-3 rounded-xl border border-white/10 hover:border-white/30 transition-colors'
+            >
+              <div className='w-9 h-9 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0'>
+                <UserCircle2 size={18} className='text-gray-300' />
+              </div>
+              <div className='flex-1 text-left'>
+                <p className='text-sm text-white'>{groupPersona ? groupPersona.title : t('group.usingDefaultPersona')}</p>
+                <p className='text-xs text-gray-500'>{groupPersona ? groupPersona.name : (userProfile?.alias || '')}</p>
+              </div>
+              <span className='text-xs text-accent'>{t('group.change')}</span>
+            </button>
+          </div>
+        )}
+
         <div>
           <label className='text-xs text-gray-500 mb-1.5 block'>
             {t('group.charactersLabel')} ({selectedIds.length} {t('group.selected')})
           </label>
 
+          {characters.length > 5 && (
+            <div className='relative mb-2'>
+              <Search size={14} className='absolute left-3 top-1/2 -translate-y-1/2 text-gray-500' />
+              <input
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder={t('group.searchCharacters')}
+                className='w-full bg-card-bg text-white text-sm rounded-xl pl-9 pr-3 py-2.5 border border-white/10 focus:border-accent/60 outline-none placeholder-gray-700'
+              />
+            </div>
+          )}
+
           {characters.length === 0 ? (
             <p className='text-xs text-gray-500'>{t('group.noCharacters')}</p>
+          ) : filteredCharacters.length === 0 ? (
+            <p className='text-xs text-gray-500'>{t('group.noSearchResults')}</p>
           ) : (
             <div className='space-y-2'>
-              {characters.map(c => {
+              {filteredCharacters.map(c => {
                 const selected = selectedIds.includes(c.id);
                 return (
                   <button
@@ -103,6 +162,24 @@ export default function GroupForm({ group, characters, onSave, onCancel }) {
 
         <div className='h-8' />
       </div>
+
+      {personaKey && (
+        <PersonaPicker
+          isOpen={showPersonaPicker}
+          onClose={() => setShowPersonaPicker(false)}
+          characterId={personaKey}
+          characterName={name || group.name}
+          onChange={async () => {
+            const selection = await window.electronAPI.personas.getSelection(personaKey);
+            if (selection.enabled && selection.personaId) {
+              const all = await window.electronAPI.personas.getAll();
+              setGroupPersona(all.find(p => p.id === selection.personaId) || null);
+            } else {
+              setGroupPersona(null);
+            }
+          }}
+        />
+      )}
     </div>
   );
 }
