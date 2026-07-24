@@ -13,7 +13,7 @@ const IDEA_EXAMPLES = [
 ];
 
 export default function ForgePanel({ creationMode,
-  onBack }) {
+  onBack, onSaveCharacter }) {
   const [idea, setIdea] = useState('');
   const [loading, setLoading] = useState(false);
   const [generated, setGenerated] = useState(null);
