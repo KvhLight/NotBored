@@ -33,8 +33,13 @@ export function AppProvider({ children }) {
       applyThemeToDOM(prefs.themeHue);
       applyWallpaperToDOM(prefs.appWallpaper);
       applyThemeModeToDOM(prefs.themeMode);
+      applyFontSizeToDOM(prefs.messageFontSize);
     });
   }, [setLang]);
+
+  function applyFontSizeToDOM(size) {
+    document.documentElement.style.setProperty('--message-font-size', `${size || 14}px`);
+  }
 
   function	applyThemeToDOM(hue)	{
 		const	shift	=	(hue	??	THEME_BASE_HUE)	-	THEME_BASE_HUE;
@@ -73,11 +78,17 @@ export function AppProvider({ children }) {
 		await window.electronAPI.uiPrefs.update({ themeMode: mode });
 	}
 
-  async	function	saveAppWallpaper(dataUriOrNull)	{
-				setUiPrefs(prev	=>	({	...prev,	appWallpaper:	dataUriOrNull	}));
+  async function saveAppWallpaper(dataUriOrNull) {
+				setUiPrefs(prev => ({ ...prev, appWallpaper: dataUriOrNull }));
 				applyWallpaperToDOM(dataUriOrNull);
-				await	window.electronAPI.uiPrefs.update({	appWallpaper:	dataUriOrNull	});
+				await window.electronAPI.uiPrefs.update({ appWallpaper: dataUriOrNull });
 		}
+
+  async function saveFontSize(size) {
+    setUiPrefs(prev => ({ ...prev, messageFontSize: size }));
+    applyFontSizeToDOM(size);
+    await window.electronAPI.uiPrefs.update({ messageFontSize: size });
+  }
 	async	function	saveChatWallpaper(characterId,	dataUriOrNull)	{
 		setUiPrefs(prev	=>	({
 			...prev,
@@ -132,6 +143,7 @@ export function AppProvider({ children }) {
 			saveThemeHue,
 			saveThemeMode,
 			saveAppWallpaper,
+			saveFontSize,
 			saveChatWallpaper,
 			getChatWallpaper,
     }}>

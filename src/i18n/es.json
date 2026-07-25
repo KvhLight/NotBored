@@ -154,7 +154,10 @@
     "brightnessTitle": "Brillo",
     "brightnessSubtitle": "Elige entre un tema oscuro o uno claro para toda la app",
     "dark": "Oscuro",
-    "light": "Claro"
+    "light": "Claro",
+    "fontSizeTitle": "Tamaño de letra de los mensajes",
+    "fontSizeSubtitle": "Ajusta y mira el ejemplo de abajo",
+    "fontSizePreview": "Así se verá el texto de tus conversaciones."
   },
   "profile": {
     "title": "Mi Perfil",

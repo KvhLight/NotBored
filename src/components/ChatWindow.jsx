@@ -83,19 +83,25 @@ export	default	function	ChatWindow({	character,	conversation,	onBack,	onNewChat,
   }, []);
 
   //console.log("AVATAR:", character.avatar?.slice(0, 100));
-  // Mensaje de bienvenida si es nueva conversación
+  // Sincroniza los mensajes con la conversación activa cada vez que cambia
+  // (la ventana de chat puede reutilizarse sin desmontarse al empezar una
+  // conversación nueva, así que no basta con el estado inicial), y añade el
+  // mensaje de bienvenida si la conversación está realmente vacía.
   useEffect(() => {
-    if (messages.length === 0 && character.greetingMsg) {
+    const existing = conversation.messages || [];
+    if (existing.length === 0 && character.greetingMsg) {
       const greeting = {
-        id: 'greeting', 
+        id: 'greeting',
         role: 'assistant',
-        content: character.greetingMsg, 
+        content: character.greetingMsg,
         timestamp: Date.now()
       };
       setMessages([greeting]);
       window.electronAPI.conversations.appendMessage(convId, greeting);
+    } else {
+      setMessages(existing);
     }
-  }, []);
+  }, [convId]);
 
   useEffect(() => {
     setMessages(conversation?.messages || []);
@@ -268,17 +274,15 @@ export	default	function	ChatWindow({	character,	conversation,	onBack,	onNewChat,
       const newValue = inputText.slice(0, start) + '*' + selected + '*' + inputText.slice(end);
       setInputText(newValue);
       requestAnimationFrame(() => {
-        el.focus();
         el.setSelectionRange(start + 1, end + 1);
       });
     } else {
-      // Sin selección: envolvemos todo lo escrito, cursor justo antes del * final
-      const newValue = `*${inputText}*`;
+      // Sin selección: insertamos ** justo en el cursor (no envolvemos todo
+      // el texto), con el cursor quedando entre los dos asteriscos
+      const newValue = inputText.slice(0, start) + '**' + inputText.slice(start);
       setInputText(newValue);
       requestAnimationFrame(() => {
-        el.focus();
-        const pos = newValue.length - 1;
-        el.setSelectionRange(pos, pos);
+        el.setSelectionRange(start + 1, start + 1);
       });
     }
   }
@@ -543,9 +547,10 @@ export	default	function	ChatWindow({	character,	conversation,	onBack,	onNewChat,
           
           <button
             onClick={handleWrapAsterisks}
+            onMouseDown={e => e.preventDefault()}
             disabled={isStreaming}
             title={t('chat.wrapAsterisks')}
-            className='p-2.5 rounded-xl flex-shrink-0 text-gray-500 hover:text-white hover:bg-white/5 transition-colors disabled:opacity-40 font-serif italic text-base leading-none'
+            className='p-2.5 rounded-xl flex-shrink-0 bg-accent/15 text-accent hover:bg-accent/25 transition-colors disabled:opacity-40 font-serif italic text-lg leading-none font-bold'
           >
             *
           </button>
@@ -565,10 +570,6 @@ export	default	function	ChatWindow({	character,	conversation,	onBack,	onNewChat,
             )}
           </button>
         </div>
-        
-        <p className='text-center text-xs text-gray-700 mt-2'>
-          {t('chat.keyboardHint')}
-        </p>
       </div>
       </div>
 

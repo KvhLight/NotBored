@@ -32,7 +32,7 @@ const DEFAULT_SETTINGS = {
   autoMemoryEnabled: true,
   autoMemoryInterval: 10, // cada cuántos mensajes se generan recuerdos solos
 };
-const DEFAULT_UI_PREFS = { themeHue: 262, themeMode: 'dark', appWallpaper: null, chatWallpapers: {} };
+const DEFAULT_UI_PREFS = { themeHue: 262, themeMode: 'dark', appWallpaper: null, chatWallpapers: {}, messageFontSize: 14 };
 
 // ---- IndexedDB: mismo concepto que localStorage pero sin el techo de 5-10MB ----
 const DB_NAME = 'proyecto-yo-db';

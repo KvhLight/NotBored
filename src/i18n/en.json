@@ -155,7 +155,10 @@
     "brightnessTitle": "Brightness",
     "brightnessSubtitle": "Choose a dark or light theme for the whole app",
     "dark": "Dark",
-    "light": "Light"
+    "light": "Light",
+    "fontSizeTitle": "Message font size",
+    "fontSizeSubtitle": "Adjust and check the preview below",
+    "fontSizePreview": "This is how your conversation text will look."
   },
   "profile": {
     "title": "My Profile",

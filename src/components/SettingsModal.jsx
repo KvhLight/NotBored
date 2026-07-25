@@ -61,6 +61,7 @@ export default function SettingsModal({ onClose }) {
     saveLanguage,
     uiPrefs,
     saveThemeMode,
+    saveFontSize,
   } = useApp();
   const [toneInput, setToneInput] = useState(userProfile.roleTone || '');
   const [toneSuggestions, setToneSuggestions] = useState([]);
@@ -344,6 +345,34 @@ export default function SettingsModal({ onClose }) {
 										>
 											<Sun size={14} /> {t('appearance.light')}
 										</button>
+									</div>
+								</div>
+								{/* Tamaño de letra de los mensajes */}
+								<div className='border border-white/10 rounded-xl p-3 mt-3'>
+									<h3 className='text-sm font-semibold text-white mb-1'>
+										{t('appearance.fontSizeTitle')}
+									</h3>
+									<p className='text-xs text-gray-500 mb-3'>
+										{t('appearance.fontSizeSubtitle')}
+									</p>
+									<input
+										type='range'
+										min='12'
+										max='20'
+										step='1'
+										value={uiPrefs.messageFontSize || 14}
+										onChange={e => saveFontSize(Number(e.target.value))}
+										className='w-full accent-accent mb-3'
+									/>
+									<div className='bg-app-bg rounded-xl p-3 border border-white/10'>
+										<div className='bg-msg-ai rounded-2xl rounded-tl-sm px-3 py-2 w-fit max-w-full'>
+											<p
+												className='text-gray-100 whitespace-pre-wrap'
+												style={{ fontSize: `${uiPrefs.messageFontSize || 14}px` }}
+											>
+												{t('appearance.fontSizePreview')}
+											</p>
+										</div>
 									</div>
 								</div>
 														{/*	Selector	de	Theme	(color)	*/}

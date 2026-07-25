@@ -112,7 +112,7 @@ export default function MessageBubble({
               </div>
             </div>
           ) : (
-            <p className='whitespace-pre-wrap break-words'>
+            <p className='whitespace-pre-wrap break-words' style={{ fontSize: 'var(--message-font-size)' }}>
               {renderContent(message.content)}
 
               {isStreaming && (

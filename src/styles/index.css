@@ -30,6 +30,7 @@
     --color-msg-ai:	hsl(calc(var(--msgai-h)	+	var(--theme-hue-shift))	var(--msgai-s)	var(--msgai-l));
   /*	Fondo	de	pantalla	de	la	app	(imagen).	Vacío	=	sin	imagen,	solo	color.	*/
     --app-wallpaper-image:	none;
+    --message-font-size: 14px;
 }
 
 /* ==========================================================================
