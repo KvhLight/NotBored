@@ -12,8 +12,7 @@ const IDEA_EXAMPLES = [
   'Un mago bibliotecario guardián de secretos prohibidos',
 ];
 
-export default function ForgePanel({ creationMode,
-  onBack, onSaveCharacter }) {
+export default function ForgePanel({ onSaveCharacter, onBack }) {
   const [idea, setIdea] = useState('');
   const [loading, setLoading] = useState(false);
   const [generated, setGenerated] = useState(null);
